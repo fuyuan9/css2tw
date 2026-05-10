@@ -132,14 +132,17 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Explain { selector, css } => {
             let content = std::fs::read_to_string(css)?;
-            let stylesheet = css2tw_core::css::parser::parse_css(&content).map_err(|e| anyhow::anyhow!("CSS Parse Error: {:?}", e))?;
+            let stylesheet = css2tw_core::css::parser::parse_css(&content)
+                .map_err(|e| anyhow::anyhow!("CSS Parse Error: {:?}", e))?;
             let rules = css2tw_core::css::parser::extract_style_rules(&stylesheet);
             let rule_map = css2tw_core::css::parser::build_rule_map(&rules);
+            let variable_map = css2tw_core::css::parser::extract_variables(&rules);
 
             let selector_clean = selector.trim_start_matches('.');
             let explanation = css2tw_core::rewrite::planner::ConversionPlanner::explain(
                 selector_clean,
                 &rule_map,
+                &variable_map,
                 4.0, // default rem_scale
             );
 
@@ -286,6 +289,7 @@ fn process_migration(
         }
 
         let mut rule_map = std::collections::HashMap::new();
+        let mut variable_map = std::collections::HashMap::new();
         let mut stylesheets = Vec::new();
         for content in &css_contents {
             if let Ok(stylesheet) = css2tw_core::css::parser::parse_css(content) {
@@ -297,8 +301,13 @@ fn process_migration(
             let rules = css2tw_core::css::parser::extract_style_rules(stylesheet);
             let map = css2tw_core::css::parser::build_rule_map(&rules);
             for (name, mappings) in map {
-                rule_map.entry(name).or_insert_with(Vec::new).extend(mappings);
+                rule_map
+                    .entry(name)
+                    .or_insert_with(Vec::new)
+                    .extend(mappings);
             }
+            let vars = css2tw_core::css::parser::extract_variables(&rules);
+            variable_map.extend(vars);
         }
 
         let source_files = css2tw_core::source::Scanner::read_files_parallel(&other_files);
@@ -332,6 +341,7 @@ fn process_migration(
                 css2tw_core::rewrite::planner::ConversionPlanner::plan(
                     &classes,
                     &rule_map,
+                    &variable_map,
                     resolved_config.tailwind.rem_scale,
                     resolved_config.confidence_threshold as f64,
                 )
@@ -363,7 +373,7 @@ fn process_migration(
                             },
                             before: rep.before.clone(),
                             after: rep.after.clone(),
-                            confidence: rep.confidence,
+                            confidence: rep.confidence.clone(),
                             source_selector: "".to_string(),
                             reasons: if resolved_config.agent.include_reasons {
                                 rep.reasons.clone()
