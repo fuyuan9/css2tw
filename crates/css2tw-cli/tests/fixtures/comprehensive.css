@@ -1,0 +1,38 @@
+.btn-primary {
+    display: inline-flex;
+    padding: 0.5rem 1rem;
+    color: white;
+    background-color: blue;
+    border-radius: 0.25rem;
+    font-size: 1rem;
+    width: auto;
+}
+
+.btn-primary:hover {
+    background-color: darkblue;
+    text-decoration: underline;
+}
+
+.btn-primary::before {
+    content: "→";
+    margin-right: 0.5rem;
+}
+
+.card {
+    padding: 1.5rem;
+    border: 1px solid #ccc;
+    width: 100%;
+}
+
+div.card {
+    background-color: lightgray;
+}
+button.btn-primary {
+    border-width: 2px;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 0.75rem;
+}

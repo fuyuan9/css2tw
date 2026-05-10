@@ -1,0 +1,54 @@
+/* Basic styles */
+.text-box {
+    padding: 1rem;
+    font-size: 1rem;
+}
+
+/* Tag specific overrides */
+input.text-box {
+    border: 1px solid gray;
+}
+
+div.text-box {
+    background-color: white;
+}
+
+/* Pseudo classes */
+.interactive:hover {
+    color: red;
+}
+
+.interactive:focus {
+    outline: 2px solid blue;
+}
+
+/* Pseudo elements */
+.item::before {
+    content: "•";
+    margin-right: 0.25rem;
+}
+
+/* Combinators (HTML only for now) */
+.container .child {
+    margin-left: 1rem;
+}
+
+.list > li {
+    list-style: none;
+    padding-bottom: 0.5rem;
+}
+
+/* Specificity */
+#unique-header {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.header {
+    font-size: 1.5rem;
+}
+
+/* rem scale test */
+.scaled {
+    width: 2.5rem; /* 4.0 -> 10, 5.0 -> 12.5 -> [12.5rem] */
+}

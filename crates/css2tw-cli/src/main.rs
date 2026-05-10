@@ -1,0 +1,247 @@
+use clap::{Parser, Subcommand};
+use css2tw_core::Config;
+
+#[derive(Parser)]
+#[command(name = "css2tw")]
+#[command(about = "Production-grade CSS-to-Tailwind Migration CLI", long_about = None)]
+#[command(version)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+
+    /// Output in JSON format
+    #[arg(long, global = true)]
+    json: bool,
+
+    /// Disable color output
+    #[arg(long, global = true)]
+    no_color: bool,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Analyze a repository and report convertible classes without writing files
+    Scan {
+        /// Path to scan
+        #[arg(default_value = ".")]
+        path: String,
+    },
+    /// Perform migration planning and optionally write changes
+    Convert {
+        /// Path to scan
+        #[arg(default_value = ".")]
+        path: String,
+        /// Dry run mode (don't write files)
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
+        /// Write mode (overwrite files)
+        #[arg(long, default_value_t = false)]
+        write: bool,
+        /// Confidence threshold
+        #[arg(long, default_value_t = 0.8)]
+        confidence_threshold: f64,
+        /// Rem to Tailwind scale factor
+        #[arg(long, default_value_t = 4.0)]
+        rem_scale: f32,
+    },
+    /// Explain how a CSS class would be converted
+    Explain {
+        /// CSS class selector (e.g. .btn-primary)
+        selector: String,
+
+        /// Path to the CSS file containing the class
+        #[arg(long)]
+        css: String,
+    },
+    /// Print resolved configuration
+    Config,
+}
+
+fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+
+    match &cli.command {
+        Commands::Scan { path } => {
+            let mut report = css2tw_core::report::Report {
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                command: "scan".to_string(),
+                mode: "read_only".to_string(),
+                summary: css2tw_core::report::Summary {
+                    files_scanned: 0,
+                    css_files_scanned: 0,
+                    source_files_scanned: 0,
+                    classes_found: 0,
+                    classes_convertible: 0,
+                    classes_partially_convertible: 0,
+                    classes_unconvertible: 0,
+                    files_changed: 0,
+                    replacements_planned: 0,
+                    warnings: 0,
+                    errors: 0,
+                },
+                changes: vec![],
+                unconverted: vec![],
+                warnings: vec![],
+                errors: vec![],
+            };
+            
+            if let Ok(files) = css2tw_core::source::Scanner::scan_directory(&path) {
+                report.summary.files_scanned = files.len();
+            }
+
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("Scanned {} files in {}", report.summary.files_scanned, path);
+            }
+        }
+        Commands::Convert { path, dry_run, write, confidence_threshold, rem_scale } => {
+            let is_dry_run = *dry_run || !*write;
+            let mode = if is_dry_run { "dry_run" } else { "write" };
+            
+            let mut report = css2tw_core::report::Report {
+                version: env!("CARGO_PKG_VERSION").to_string(),
+                command: "convert".to_string(),
+                mode: mode.to_string(),
+                summary: css2tw_core::report::Summary {
+                    files_scanned: 0,
+                    css_files_scanned: 0,
+                    source_files_scanned: 0,
+                    classes_found: 0,
+                    classes_convertible: 0,
+                    classes_partially_convertible: 0,
+                    classes_unconvertible: 0,
+                    files_changed: 0,
+                    replacements_planned: 0,
+                    warnings: 0,
+                    errors: 0,
+                },
+                changes: vec![],
+                unconverted: vec![],
+                warnings: vec![],
+                errors: vec![],
+            };
+
+            if let Ok(files) = css2tw_core::source::Scanner::scan_directory(&path) {
+                let (css_files, other_files): (Vec<_>, Vec<_>) = files.into_iter().partition(|p| {
+                    p.extension().and_then(|s| s.to_str()) == Some("css")
+                });
+                
+                report.summary.files_scanned = css_files.len() + other_files.len();
+                report.summary.css_files_scanned = css_files.len();
+                report.summary.source_files_scanned = other_files.len();
+
+                // Build Rule Map from CSS files
+                let mut css_contents = Vec::new();
+                for css_path in &css_files {
+                    if let Ok(content) = std::fs::read_to_string(css_path) {
+                        css_contents.push(content);
+                    }
+                }
+
+                let mut rule_map = std::collections::HashMap::new();
+                let mut stylesheets = Vec::new();
+                for content in &css_contents {
+                    if let Ok(stylesheet) = css2tw_core::css::parser::parse_css(content) {
+                        stylesheets.push(stylesheet);
+                    }
+                }
+
+                for stylesheet in &stylesheets {
+                    let rules = css2tw_core::css::parser::extract_style_rules(stylesheet);
+                    let map = css2tw_core::css::parser::build_rule_map(&rules);
+                    for (name, mappings) in map {
+                        rule_map.entry(name).or_insert_with(Vec::new).extend(mappings);
+                    }
+                }
+
+                let source_files = css2tw_core::source::Scanner::read_files_parallel(&other_files);
+
+                for source_file in source_files {
+                    use css2tw_core::source::ClassUsageParser;
+                    let path = std::path::Path::new(&source_file.path);
+                    let replacements = if path.extension().and_then(|s| s.to_str()) == Some("html") {
+                        let html_parser = css2tw_core::source::html::HtmlParser;
+                        let rules = stylesheets.iter().flat_map(|s| css2tw_core::css::parser::extract_style_rules(s)).collect::<Vec<_>>();
+                        html_parser.plan_html(&source_file, &rules, *rem_scale).unwrap_or_default()
+                    } else if path.extension().and_then(|s| s.to_str()) == Some("jsx") || path.extension().and_then(|s| s.to_str()) == Some("tsx") {
+                        let jsx_parser = css2tw_core::source::jsx::JsxParser;
+                        let rules = stylesheets.iter().flat_map(|s| css2tw_core::css::parser::extract_style_rules(s)).collect::<Vec<_>>();
+                        jsx_parser.plan_jsx(&source_file, &rules, *rem_scale).unwrap_or_default()
+                    } else {
+                        let jsx_parser = css2tw_core::source::jsx::JsxParser;
+                        let classes = jsx_parser.extract_classes(&source_file).unwrap_or_default();
+                        css2tw_core::rewrite::planner::ConversionPlanner::plan(
+                            &classes,
+                            &rule_map,
+                            *rem_scale,
+                            *confidence_threshold,
+                        ).unwrap_or_default()
+                    };
+
+                    if !replacements.is_empty() {
+                        report.summary.replacements_planned += replacements.len();
+                        
+                        let mut change_file = css2tw_core::report::ChangeFile {
+                            file: source_file.path.clone(),
+                            status: if is_dry_run { "planned".to_string() } else { "modified".to_string() },
+                            replacements: vec![],
+                        };
+
+                        for rep in &replacements {
+                            change_file.replacements.push(css2tw_core::report::ReplacementReport {
+                                range: css2tw_core::report::RangeReport {
+                                    start_byte: rep.span.start,
+                                    end_byte: rep.span.end,
+                                },
+                                before: rep.before.clone(),
+                                after: rep.after.clone(),
+                                confidence: 1.0,
+                                source_selector: "".to_string(),
+                                reasons: vec![],
+                            });
+                        }
+
+                        report.changes.push(change_file);
+
+                        if !is_dry_run {
+                            let patched_content = css2tw_core::rewrite::patch::apply_patches(&source_file.content, &replacements);
+                            if let Err(e) = std::fs::write(&source_file.path, patched_content) {
+                                report.errors.push(format!("Failed to write {}: {}", source_file.path, e));
+                            } else {
+                                report.summary.files_changed += 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("Convert completed for path: {}. Mode: {}. Threshold: {}", path, mode, confidence_threshold);
+                println!("Scanned {} source files. Found {} classes. Planned {} replacements. Modified {} files.", 
+                         report.summary.source_files_scanned, 
+                         report.summary.classes_found, 
+                         report.summary.replacements_planned,
+                         report.summary.files_changed);
+            }
+        }
+        Commands::Explain { selector, css } => {
+            if !cli.json {
+                println!("Explaining selector: {} in {}", selector, css);
+            }
+            // TODO: implement explain
+        }
+        Commands::Config => {
+            let config = Config::default();
+            if cli.json {
+                println!("{}", serde_json::to_string_pretty(&config)?);
+            } else {
+                println!("{:#?}", config);
+            }
+        }
+    }
+
+    Ok(())
+}

@@ -1,0 +1,21 @@
+[package]
+name = "css2tw-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "css2tw"
+path = "src/main.rs"
+
+[dependencies]
+css2tw-core = { path = "../css2tw-core" }
+clap.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+assert_cmd = "2.2.1"
+insta = "1.47.2"
+tempfile = "3.10"
