@@ -86,6 +86,9 @@ impl HtmlParser {
                         span: Span { start: val_start, end: val_end },
                         before: class_string.to_string(),
                         after: new_classes,
+                        confidence: 1.0,
+                        reasons: vec![],
+                        trace: vec!["Matched element in HTML fragment".to_string()],
                     });
                 }
             } else {
@@ -102,6 +105,9 @@ impl HtmlParser {
                         span: Span { start: insert_pos, end: insert_pos },
                         before: "".to_string(),
                         after: format!(" class=\"{}\"", new_classes),
+                        confidence: 1.0,
+                        reasons: vec![],
+                        trace: vec!["Injected new class attribute for element".to_string()],
                     });
                 }
             }

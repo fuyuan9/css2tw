@@ -5,6 +5,9 @@ pub struct Replacement {
     pub span: Span,
     pub before: String,
     pub after: String,
+    pub confidence: f32,
+    pub reasons: Vec<String>,
+    pub trace: Vec<String>,
 }
 
 pub fn apply_patches(source: &str, replacements: &[Replacement]) -> String {

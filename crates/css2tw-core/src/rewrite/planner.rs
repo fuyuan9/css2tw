@@ -26,10 +26,17 @@ impl ConversionPlanner {
                     let confidence = 1.0; 
 
                     if confidence >= confidence_threshold {
+                        let mut trace = Vec::new();
+                        trace.push(format!("Found {} mappings for class .{}", mappings.len(), usage.class_name));
+                        trace.push(format!("Resolved Tailwind utility: {}", new_classes));
+                        
                         replacements.push(Replacement {
                             span: usage.span.clone(),
                             before: usage.class_name.clone(),
                             after: new_classes,
+                            confidence: confidence as f32,
+                            reasons: vec![],
+                            trace,
                         });
                     }
                 }
