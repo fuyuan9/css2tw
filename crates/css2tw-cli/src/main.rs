@@ -93,7 +93,7 @@ fn main() -> anyhow::Result<()> {
                 errors: vec![],
             };
             
-            if let Ok(files) = css2tw_core::source::Scanner::scan_directory(&path) {
+            if let Ok(files) = css2tw_core::source::Scanner::scan_directory(path) {
                 report.summary.files_scanned = files.len();
             }
 
@@ -104,7 +104,7 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Convert { path, dry_run, write, confidence_threshold, rem_scale, custom_theme, config_json } => {
-            let config = if let Some(json) = config_json {
+            let resolved_config = if let Some(json) = config_json {
                 serde_json::from_str(json)?
             } else {
                 let mut cfg = css2tw_core::Config::default();
@@ -144,7 +144,7 @@ fn main() -> anyhow::Result<()> {
                 errors: vec![],
             };
 
-            if let Ok(files) = css2tw_core::source::Scanner::scan_directory(&path) {
+            if let Ok(files) = css2tw_core::source::Scanner::scan_directory(path) {
                 let (css_files, other_files): (Vec<_>, Vec<_>) = files.into_iter().partition(|p| {
                     p.extension().and_then(|s| s.to_str()) == Some("css")
                 });
@@ -185,19 +185,19 @@ fn main() -> anyhow::Result<()> {
                     let replacements = if path.extension().and_then(|s| s.to_str()) == Some("html") {
                         let html_parser = css2tw_core::source::html::HtmlParser;
                         let rules = stylesheets.iter().flat_map(|s| css2tw_core::css::parser::extract_style_rules(s)).collect::<Vec<_>>();
-                        html_parser.plan_html(&source_file, &rules, config.tailwind.rem_scale).unwrap_or_default()
+                        html_parser.plan_html(&source_file, &rules, resolved_config.tailwind.rem_scale).unwrap_or_default()
                     } else if path.extension().and_then(|s| s.to_str()) == Some("jsx") || path.extension().and_then(|s| s.to_str()) == Some("tsx") {
                         let jsx_parser = css2tw_core::source::jsx::JsxParser;
                         let rules = stylesheets.iter().flat_map(|s| css2tw_core::css::parser::extract_style_rules(s)).collect::<Vec<_>>();
-                        jsx_parser.plan_jsx(&source_file, &rules, config.tailwind.rem_scale).unwrap_or_default()
+                        jsx_parser.plan_jsx(&source_file, &rules, resolved_config.tailwind.rem_scale).unwrap_or_default()
                     } else {
                         let jsx_parser = css2tw_core::source::jsx::JsxParser;
                         let classes = jsx_parser.extract_classes(&source_file).unwrap_or_default();
                         css2tw_core::rewrite::planner::ConversionPlanner::plan(
                             &classes,
                             &rule_map,
-                            config.tailwind.rem_scale,
-                            config.confidence_threshold as f64,
+                            resolved_config.tailwind.rem_scale,
+                            resolved_config.confidence_threshold as f64,
                         ).unwrap_or_default()
                     };
 
