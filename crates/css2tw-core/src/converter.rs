@@ -28,17 +28,28 @@ impl Converter {
         }
 
         let mut rule_map = HashMap::new();
+        let mut variable_map = HashMap::new();
         for stylesheet in &stylesheets {
             let rules = extract_style_rules(stylesheet);
             let map = build_rule_map(&rules);
             for (name, mappings) in map {
-                rule_map.entry(name).or_insert_with(Vec::new).extend(mappings);
+                rule_map
+                    .entry(name)
+                    .or_insert_with(Vec::new)
+                    .extend(mappings);
             }
+            let vars = crate::css::parser::extract_variables(&rules);
+            variable_map.extend(vars);
         }
 
         let path = std::path::Path::new(&source.path);
         let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
-        let parser_type = self.config.parsers.get(extension).cloned().unwrap_or(ParserType::Generic);
+        let parser_type = self
+            .config
+            .parsers
+            .get(extension)
+            .cloned()
+            .unwrap_or(ParserType::Generic);
 
         let replacements = match parser_type {
             ParserType::Html => {
@@ -57,9 +68,11 @@ impl Converter {
                 ConversionPlanner::plan(
                     &classes,
                     &rule_map,
+                    &variable_map,
                     self.config.tailwind.rem_scale,
                     self.config.confidence_threshold as f64,
-                ).unwrap_or_default()
+                )
+                .unwrap_or_default()
             }
         };
 

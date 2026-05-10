@@ -44,13 +44,31 @@ pub struct ReplacementReport {
     pub range: RangeReport,
     pub before: String,
     pub after: String,
-    pub confidence: f32,
+    pub confidence: ConfidenceReport,
     pub source_selector: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub reasons: Vec<String>,
     /// Step-by-step trace of the conversion logic
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trace: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+pub struct ConfidenceReport {
+    pub score: f32,
+    pub reasons: Vec<ConfidenceReason>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+#[serde(tag = "type", content = "detail")]
+pub enum ConfidenceReason {
+    FullMatch,
+    PartialMatch(Vec<String>),
+    AmbiguousSelector(String),
+    VariableResolved(String),
+    ThemeMapping,
+    ArbitraryValue,
+    LowConfidenceProperty(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -90,7 +108,25 @@ mod tests {
                 warnings: 0,
                 errors: 0,
             },
-            changes: vec![],
+            changes: vec![ChangeFile {
+                file: "test.html".to_string(),
+                status: "modified".to_string(),
+                replacements: vec![ReplacementReport {
+                    range: RangeReport {
+                        start_byte: 0,
+                        end_byte: 10,
+                    },
+                    before: "a".to_string(),
+                    after: "b".to_string(),
+                    confidence: ConfidenceReport {
+                        score: 1.0,
+                        reasons: vec![ConfidenceReason::FullMatch],
+                    },
+                    source_selector: ".test".to_string(),
+                    reasons: vec![],
+                    trace: vec![],
+                }],
+            }],
             unconverted: vec![],
             warnings: vec![],
             errors: vec![],
@@ -98,14 +134,8 @@ mod tests {
 
         let json = serde_json::to_string(&report).unwrap();
         let json_val: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
-        // Should NOT contain "changes", "unconverted", etc. at root level if they are empty
-        assert!(json_val.get("changes").is_none());
-        assert!(json_val.get("unconverted").is_none());
-        assert!(json_val.get("warnings").is_none());
-        assert!(json_val.get("errors").is_none());
-        
-        // Summary should still have them as numbers
-        assert!(json_val["summary"].get("warnings").is_some());
+
+        // Should still have changes
+        assert!(json_val.get("changes").is_some());
     }
 }

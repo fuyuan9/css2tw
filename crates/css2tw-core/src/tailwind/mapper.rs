@@ -32,10 +32,98 @@ fn length_to_tw(prop: &impl LightningToCss, rem_scale: f32) -> Option<String> {
     None
 }
 use crate::tailwind::variant::TailwindVariant;
+use std::collections::HashMap;
+use regex::Regex;
 
-pub fn map_property(property: &Property, variant: &TailwindVariant, rem_scale: f32) -> Option<String> {
+fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
+    let mut result = value.to_string();
+    let re = Regex::new(r"var\((--[^,)]+)(?:,\s*([^)]+))?\)").unwrap();
+    
+    for _ in 0..5 {
+        let mut changed = false;
+        let mut new_result = String::new();
+        let mut last_end = 0;
+        
+        for cap in re.captures_iter(&result) {
+            let full_match = cap.get(0).unwrap();
+            let name = cap.get(1).unwrap().as_str();
+            
+            new_result.push_str(&result[last_end..full_match.start()]);
+            
+            if let Some(val) = map.get(name) {
+                new_result.push_str(val);
+                changed = true;
+            } else if let Some(fallback) = cap.get(2) {
+                new_result.push_str(fallback.as_str());
+                changed = true;
+            } else {
+                new_result.push_str(full_match.as_str());
+            }
+            last_end = full_match.end();
+        }
+        
+        new_result.push_str(&result[last_end..]);
+        result = new_result;
+        
+        if !changed { break; }
+    }
+    result
+}
+
+pub fn map_property(
+    property: &Property,
+    variant: &TailwindVariant,
+    rem_scale: f32,
+    variable_map: &HashMap<String, String>
+) -> Option<String> {
     let prefix = variant.to_prefix();
     
+    // Resolve variables if any
+    let mut prop_str = String::new();
+    let mut printer = Printer::new(&mut prop_str, PrinterOptions::default());
+    let _ = property.to_css(&mut printer, false);
+    
+    let resolved_str = resolve_vars(&prop_str, variable_map);
+    
+    // If it's a CSS variable definition, we don't map it to tailwind directly
+    if prop_str.starts_with("--") {
+        return None;
+    }
+
+    // If variables were resolved, we use the resolved string for arbitrary values
+    if resolved_str != prop_str {
+        if let Some(pos) = resolved_str.find(':') {
+            let prop_name = resolved_str[..pos].trim();
+            let val = resolved_str[pos + 1..].trim().trim_end_matches(';');
+            
+            if prop_name == "background-color" || prop_name == "background" {
+                return Some(format!("{}bg-[{}]", prefix, val));
+            } else if prop_name == "color" {
+                return Some(format!("{}text-[{}]", prefix, val));
+            } else if prop_name.starts_with("padding") {
+                let side = match prop_name {
+                    "padding-top" => "t",
+                    "padding-bottom" => "b",
+                    "padding-left" => "l",
+                    "padding-right" => "r",
+                    _ => "",
+                };
+                return Some(format!("{}p{}-[{}]", prefix, side, val));
+            } else if prop_name.starts_with("margin") {
+                let side = match prop_name {
+                    "margin-top" => "t",
+                    "margin-bottom" => "b",
+                    "margin-left" => "l",
+                    "margin-right" => "r",
+                    _ => "",
+                };
+                return Some(format!("{}m{}-[{}]", prefix, side, val));
+            } else {
+                return Some(format!("{}[{}]", prefix, resolved_str.replace(": ", ":").replace(' ', "_")));
+            }
+        }
+    }
+
     let result = match property {
         Property::Display(display) => match display {
             Display::Keyword(DisplayKeyword::None) => Some("hidden".to_string()),
@@ -287,7 +375,20 @@ pub fn map_property(property: &Property, variant: &TailwindVariant, rem_scale: f
                 None
             }
         },
-        _ => None,
+        _ => {
+            if prop_str.starts_with("content") {
+                return Some(format!("{}content-[{}]", prefix, prop_str.split_once(':').unwrap().1.trim().trim_end_matches(';').replace(' ', "_")));
+            }
+            if prop_str.starts_with("box-sizing") {
+                let val = prop_str.split_once(':').unwrap().1.trim().trim_end_matches(';');
+                return Some(val.to_string());
+            }
+            if prop_str.starts_with("transform") {
+                let val = prop_str.split_once(':').unwrap().1.trim().trim_end_matches(';');
+                return Some(format!("{}transform-[{}]", prefix, val.replace(' ', "_")));
+            }
+            None
+        }
     };
 
     result.map(|s| format!("{}{}", prefix, s))
@@ -307,12 +408,13 @@ mod tests {
         let rules = crate::css::parser::extract_style_rules(&parsed);
         
         let variant = TailwindVariant::default();
+        let vars = HashMap::new();
         
         let none_prop = &rules[0].declarations.declarations[0];
-        assert_eq!(map_property(none_prop, &variant, 4.0), Some("hidden".to_string()));
+        assert_eq!(map_property(none_prop, &variant, 4.0, &vars), Some("hidden".to_string()));
 
         let flex_prop = &rules[1].declarations.declarations[0];
-        assert_eq!(map_property(flex_prop, &variant, 4.0), Some("flex".to_string()));
+        assert_eq!(map_property(flex_prop, &variant, 4.0, &vars), Some("flex".to_string()));
     }
 
     #[test]
@@ -324,12 +426,13 @@ mod tests {
         let rules = crate::css::parser::extract_style_rules(&parsed);
         
         let variant = TailwindVariant::default();
+        let vars = HashMap::new();
         
         let pt = &rules[0].declarations.declarations[0];
-        assert_eq!(map_property(pt, &variant, 4.0), Some("pt-4".to_string()));
+        assert_eq!(map_property(pt, &variant, 4.0, &vars), Some("pt-4".to_string()));
 
         let mb = &rules[0].declarations.declarations[1];
-        assert_eq!(map_property(mb, &variant, 4.0), Some("mb-4".to_string()));
+        assert_eq!(map_property(mb, &variant, 4.0, &vars), Some("mb-4".to_string()));
     }
 
     #[test]
@@ -341,13 +444,14 @@ mod tests {
         let rules = crate::css::parser::extract_style_rules(&parsed);
         
         let variant = TailwindVariant::default();
+        let vars = HashMap::new();
         
         let color = &rules[0].declarations.declarations[0];
-        let out = map_property(color, &variant, 4.0).unwrap();
+        let out = map_property(color, &variant, 4.0, &vars).unwrap();
         assert!(out.contains("#f00") || out.contains("red"));
 
         let bg = &rules[0].declarations.declarations[1];
-        let out = map_property(bg, &variant, 4.0).unwrap();
+        let out = map_property(bg, &variant, 4.0, &vars).unwrap();
         assert!(out.contains("bg-") && (out.contains("#f00") || out.contains("red")));
     }
 
@@ -360,8 +464,9 @@ mod tests {
         let rules = crate::css::parser::extract_style_rules(&parsed);
         
         let variant = TailwindVariant::Hover;
+        let vars = HashMap::new();
         let pt = &rules[0].declarations.declarations[0];
-        assert_eq!(map_property(pt, &variant, 4.0), Some("hover:pt-4".to_string()));
+        assert_eq!(map_property(pt, &variant, 4.0, &vars), Some("hover:pt-4".to_string()));
     }
 
     #[test]
@@ -373,11 +478,12 @@ mod tests {
         let rules = crate::css::parser::extract_style_rules(&parsed);
         
         let variant = TailwindVariant::default();
+        let vars = HashMap::new();
         let pt = &rules[0].declarations.declarations[0];
         
-        assert_eq!(map_property(pt, &variant, 4.0), Some("pt-4".to_string()));
-        assert_eq!(map_property(pt, &variant, 1.0), Some("pt-1".to_string()));
-        assert_eq!(map_property(pt, &variant, 5.0), Some("pt-5".to_string()));
+        assert_eq!(map_property(pt, &variant, 4.0, &vars), Some("pt-4".to_string()));
+        assert_eq!(map_property(pt, &variant, 1.0, &vars), Some("pt-1".to_string()));
+        assert_eq!(map_property(pt, &variant, 5.0, &vars), Some("pt-5".to_string()));
     }
 }
 

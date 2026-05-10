@@ -6,16 +6,45 @@ use crate::css::parser::TailwindMapping;
 #[derive(Debug, Clone)]
 pub struct ResolvedElementStyle<'i> {
     pub properties: Vec<TailwindMapping<'i>>,
+    pub variable_map: std::collections::HashMap<String, String>,
 }
 
 impl<'i> ResolvedElementStyle<'i> {
     pub fn to_tailwind_string(&self, rem_scale: f32) -> String {
         use crate::tailwind::mapper::map_property;
-        use std::collections::HashSet;
-        
-        let mut tailwind_classes = Vec::new();
+        use std::collections::{HashMap, HashSet};
+
+        // Group properties by category and variant to resolve conflicts (specificity)
+        let mut best_props: HashMap<(String, crate::tailwind::variant::TailwindVariant), &TailwindMapping> = HashMap::new();
+
         for mapping in &self.properties {
-            if let Some(tw_class) = map_property(&mapping.property, &mapping.variant, rem_scale) {
+            let mut name = String::new();
+            let mut printer = lightningcss::printer::Printer::new(&mut name, Default::default());
+            // We use the property name as the key for conflict resolution
+            let _ = mapping.property.to_css(&mut printer, false);
+            if let Some(pos) = name.find(':') {
+                name = name[..pos].to_string();
+            }
+            
+            let key = (name, mapping.variant.clone());
+            if let Some(existing) = best_props.get(&key) {
+                // If specificity is equal or higher, the later one wins
+                if mapping.specificity >= existing.specificity {
+                    best_props.insert(key, mapping);
+                }
+            } else {
+                best_props.insert(key, mapping);
+            }
+        }
+
+        let mut tailwind_classes = Vec::new();
+        for mapping in best_props.values() {
+            if let Some(tw_class) = map_property(
+                &mapping.property,
+                &mapping.variant,
+                rem_scale,
+                &self.variable_map,
+            ) {
                 tailwind_classes.push(tw_class);
             }
         }
@@ -32,11 +61,13 @@ impl<'i> ResolvedElementStyle<'i> {
 
 pub struct StyleResolver<'i, 'a> {
     pub style_rules: &'a [ &'a StyleRule<'i> ],
+    pub variable_map: std::collections::HashMap<String, String>,
 }
 
 impl<'i, 'a> StyleResolver<'i, 'a> {
     pub fn new(style_rules: &'a [ &'a StyleRule<'i> ]) -> Self {
-        Self { style_rules }
+        let variable_map = crate::css::parser::extract_variables(style_rules);
+        Self { style_rules, variable_map }
     }
 
     pub fn resolve_styles(&self, element: ElementRef) -> ResolvedElementStyle<'i> {
@@ -58,12 +89,15 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                         if scraper_sel.matches(&element) {
                             // Determine variant from original selector
                             let variant = self.extract_variant(selector);
-                            
+                            let specificity = selector.specificity();
+
                             for prop in &rule.declarations.declarations {
-                                resolved_props.push(TailwindMapping {
+                                let m = TailwindMapping {
                                     property: prop.clone(),
                                     variant: variant.clone(),
-                                });
+                                    specificity,
+                                };
+                                resolved_props.push(m);
                             }
                         }
                     }
@@ -73,6 +107,7 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
 
         ResolvedElementStyle {
             properties: resolved_props,
+            variable_map: self.variable_map.clone(),
         }
     }
 
@@ -227,5 +262,45 @@ mod tests {
 
         let before_mapping = resolved.properties.iter().find(|m| matches!(m.variant, TailwindVariant::Before)).unwrap();
         assert!(matches!(before_mapping.property, Property::Padding(_)));
+    }
+
+    #[test]
+    fn test_resolve_variables() {
+        let css = ":root { --main-bg: #ff0000; } .card { background-color: var(--main-bg); }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+        let resolver = StyleResolver::new(&rules);
+
+        let html = Html::parse_fragment("<div class=\"card\"></div>");
+        let element = html.root_element().select(&Selector::parse(".card").unwrap()).next().unwrap();
+
+        let resolved = resolver.resolve_styles(element);
+        let tw = resolved.to_tailwind_string(4.0);
+        println!("Variable resolve Output: {}", tw);
+        
+        // Should resolve to red background
+        assert!(tw.contains("bg-[#ff0000]") || tw.contains("bg-[red]"));
+    }
+
+    #[test]
+    fn test_specificity_optimization() {
+        let css = ".card { color: red; } div.card { color: blue; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+        let resolver = StyleResolver::new(&rules);
+
+        let html = Html::parse_fragment("<div class=\"card\"></div>");
+        let element = html.root_element().select(&Selector::parse(".card").unwrap()).next().unwrap();
+
+        let resolved = resolver.resolve_styles(element);
+        let tw = resolved.to_tailwind_string(4.0);
+        println!("Specificity Output: {}", tw);
+        
+        // div.card (specificity 0,1,1) should beat .card (specificity 0,1,0)
+        // blue is normalized to #00f by lightningcss
+        assert!(tw.contains("#00f"));
+        assert!(!tw.contains("red"));
     }
 }
