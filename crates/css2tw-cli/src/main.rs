@@ -43,6 +43,12 @@ enum Commands {
         /// Rem to Tailwind scale factor
         #[arg(long, default_value_t = 4.0)]
         rem_scale: f32,
+        /// Custom theme values in key=value format (can be used multiple times)
+        #[arg(long)]
+        custom_theme: Vec<String>,
+        /// Custom configuration in JSON format
+        #[arg(long)]
+        config_json: Option<String>,
     },
     /// Explain how a CSS class would be converted
     Explain {
@@ -55,6 +61,8 @@ enum Commands {
     },
     /// Print resolved configuration
     Config,
+    /// Print JSON schema for reports and config
+    Schema,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -95,7 +103,21 @@ fn main() -> anyhow::Result<()> {
                 println!("Scanned {} files in {}", report.summary.files_scanned, path);
             }
         }
-        Commands::Convert { path, dry_run, write, confidence_threshold, rem_scale } => {
+        Commands::Convert { path, dry_run, write, confidence_threshold, rem_scale, custom_theme, config_json } => {
+            let config = if let Some(json) = config_json {
+                serde_json::from_str(json)?
+            } else {
+                let mut cfg = css2tw_core::Config::default();
+                cfg.tailwind.rem_scale = *rem_scale;
+                cfg.confidence_threshold = *confidence_threshold as f32;
+                for pair in custom_theme {
+                    if let Some((k, v)) = pair.split_once('=') {
+                        cfg.tailwind.custom_theme.insert(k.to_string(), v.to_string());
+                    }
+                }
+                cfg
+            };
+
             let is_dry_run = *dry_run || !*write;
             let mode = if is_dry_run { "dry_run" } else { "write" };
             
@@ -163,19 +185,19 @@ fn main() -> anyhow::Result<()> {
                     let replacements = if path.extension().and_then(|s| s.to_str()) == Some("html") {
                         let html_parser = css2tw_core::source::html::HtmlParser;
                         let rules = stylesheets.iter().flat_map(|s| css2tw_core::css::parser::extract_style_rules(s)).collect::<Vec<_>>();
-                        html_parser.plan_html(&source_file, &rules, *rem_scale).unwrap_or_default()
+                        html_parser.plan_html(&source_file, &rules, config.tailwind.rem_scale).unwrap_or_default()
                     } else if path.extension().and_then(|s| s.to_str()) == Some("jsx") || path.extension().and_then(|s| s.to_str()) == Some("tsx") {
                         let jsx_parser = css2tw_core::source::jsx::JsxParser;
                         let rules = stylesheets.iter().flat_map(|s| css2tw_core::css::parser::extract_style_rules(s)).collect::<Vec<_>>();
-                        jsx_parser.plan_jsx(&source_file, &rules, *rem_scale).unwrap_or_default()
+                        jsx_parser.plan_jsx(&source_file, &rules, config.tailwind.rem_scale).unwrap_or_default()
                     } else {
                         let jsx_parser = css2tw_core::source::jsx::JsxParser;
                         let classes = jsx_parser.extract_classes(&source_file).unwrap_or_default();
                         css2tw_core::rewrite::planner::ConversionPlanner::plan(
                             &classes,
                             &rule_map,
-                            *rem_scale,
-                            *confidence_threshold,
+                            config.tailwind.rem_scale,
+                            config.confidence_threshold as f64,
                         ).unwrap_or_default()
                     };
 
@@ -196,9 +218,10 @@ fn main() -> anyhow::Result<()> {
                                 },
                                 before: rep.before.clone(),
                                 after: rep.after.clone(),
-                                confidence: 1.0,
+                                confidence: rep.confidence,
                                 source_selector: "".to_string(),
-                                reasons: vec![],
+                                reasons: rep.reasons.clone(),
+                                trace: rep.trace.clone(),
                             });
                         }
 
@@ -240,6 +263,17 @@ fn main() -> anyhow::Result<()> {
             } else {
                 println!("{:#?}", config);
             }
+        }
+        Commands::Schema => {
+            let report_schema = schemars::schema_for!(css2tw_core::report::Report);
+            let config_schema = schemars::schema_for!(css2tw_core::Config);
+            
+            let combined = serde_json::json!({
+                "report": report_schema,
+                "config": config_schema
+            });
+            
+            println!("{}", serde_json::to_string_pretty(&combined)?);
         }
     }
 
