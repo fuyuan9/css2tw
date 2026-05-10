@@ -103,9 +103,8 @@ fn test_cli_mdn_selectors_coverage() {
     assert!(stdout.contains("last:border-b-none"), "Should have last variant. {}", assert_msg);
     assert!(stdout.contains("odd:bg-"), "Should have odd variant. {}", assert_msg);
     assert!(stdout.contains("even:bg-"), "Should have even variant. {}", assert_msg);
-    // Content is temporarily disabled
-    // assert!(stdout.contains("before:content-"), "Should have before variant. {}", assert_msg);
-    // assert!(stdout.contains("after:content-"), "Should have after variant. {}", assert_msg);
+    assert!(stdout.contains("before:content-"), "Should have before variant. {}", assert_msg);
+    assert!(stdout.contains("after:content-"), "Should have after variant. {}", assert_msg);
     assert!(stdout.contains("placeholder:text-"), "Should have placeholder variant. {}", assert_msg);
     assert!(stdout.contains("selection:bg-"), "Should have selection variant. {}", assert_msg);
     
