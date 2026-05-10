@@ -195,12 +195,12 @@ fn main() -> anyhow::Result<()> {
         Commands::Schema => {
             let report_schema = schemars::schema_for!(css2tw_core::report::Report);
             let config_schema = schemars::schema_for!(css2tw_core::Config);
-            
+
             let combined = serde_json::json!({
                 "report": report_schema,
                 "config": config_schema
             });
-            
+
             println!("{}", serde_json::to_string_pretty(&combined)?);
         }
     }
@@ -226,7 +226,9 @@ fn process_migration(
         cfg.confidence_threshold = confidence_threshold as f32;
         for pair in custom_theme {
             if let Some((k, v)) = pair.split_once('=') {
-                cfg.tailwind.custom_theme.insert(k.to_string(), v.to_string());
+                cfg.tailwind
+                    .custom_theme
+                    .insert(k.to_string(), v.to_string());
             }
         }
         cfg
@@ -273,9 +275,9 @@ fn process_migration(
     };
 
     if let Ok(files) = css2tw_core::source::Scanner::scan_directory(path) {
-        let (css_files, other_files): (Vec<_>, Vec<_>) = files.into_iter().partition(|p| {
-            p.extension().and_then(|s| s.to_str()) == Some("css")
-        });
+        let (css_files, other_files): (Vec<_>, Vec<_>) = files
+            .into_iter()
+            .partition(|p| p.extension().and_then(|s| s.to_str()) == Some("css"));
 
         report.summary.files_scanned = css_files.len() + other_files.len();
         report.summary.css_files_scanned = css_files.len();

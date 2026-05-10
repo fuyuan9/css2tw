@@ -1,6 +1,6 @@
-use cssparser::ToCss;
 use crate::error::Css2TwError;
 use crate::tailwind::variant::TailwindVariant;
+use cssparser::ToCss;
 use lightningcss::printer::{Printer, PrinterOptions};
 use lightningcss::properties::Property;
 use lightningcss::rules::style::StyleRule;
@@ -21,9 +21,7 @@ pub fn parse_css(css_content: &str) -> Result<ParsedStylesheet<'_>, Css2TwError>
 }
 
 /// Extracts simple style rules from the stylesheet.
-pub fn extract_style_rules<'i, 'a>(
-    stylesheet: &'a ParsedStylesheet<'i>,
-) -> Vec<&'a StyleRule<'i>> {
+pub fn extract_style_rules<'i, 'a>(stylesheet: &'a ParsedStylesheet<'i>) -> Vec<&'a StyleRule<'i>> {
     let mut style_rules = Vec::new();
 
     for rule in &stylesheet.ast.rules.0 {
@@ -104,7 +102,11 @@ pub fn build_rule_map<'i, 'a>(
                     "::marker" => variant = TailwindVariant::Marker,
                     "::selection" => variant = TailwindVariant::Selection,
                     _ if p.starts_with(":nth-child(") => {
-                        let val = p.strip_prefix(":nth-child(").unwrap().strip_suffix(')').unwrap();
+                        let val = p
+                            .strip_prefix(":nth-child(")
+                            .unwrap()
+                            .strip_suffix(')')
+                            .unwrap();
                         variant = TailwindVariant::Arbitrary(format!("nth-[{}]", val));
                     }
                     _ if p.starts_with("::") => {
@@ -138,7 +140,6 @@ pub fn build_rule_map<'i, 'a>(
             map.entry(name).or_default().extend(mappings);
         }
     }
-
 
     map
 }

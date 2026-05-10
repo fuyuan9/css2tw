@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use crate::source::class_usage::ClassUsage;
-use crate::rewrite::patch::Replacement;
-use crate::error::Css2TwError;
 use crate::css::parser::TailwindMapping;
+use crate::error::Css2TwError;
+use crate::rewrite::patch::Replacement;
+use crate::source::class_usage::ClassUsage;
+use std::collections::HashMap;
 
 pub struct ConversionPlanner;
 
@@ -66,7 +66,8 @@ impl ConversionPlanner {
             );
             if mapping.property.to_css(&mut printer, false).is_ok() {
                 if dest.contains("var(") {
-                    confidence_reasons.push(crate::report::ConfidenceReason::VariableResolved(dest));
+                    confidence_reasons
+                        .push(crate::report::ConfidenceReason::VariableResolved(dest));
                     score *= 0.9;
                 }
             }

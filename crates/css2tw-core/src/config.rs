@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -180,7 +180,10 @@ mod tests {
         }"##;
 
         let config: Config = serde_json::from_str(json).unwrap();
-        assert_eq!(config.tailwind.custom_theme.get("primary").unwrap(), "#ff0000");
+        assert_eq!(
+            config.tailwind.custom_theme.get("primary").unwrap(),
+            "#ff0000"
+        );
         assert_eq!(config.confidence_threshold, 0.95);
     }
 

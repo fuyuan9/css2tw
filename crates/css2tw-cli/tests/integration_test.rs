@@ -26,7 +26,7 @@ fn test_cli_convert_complex() {
         .success();
 
     let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
-    
+
     // Check if HTML file was scanned
     assert!(output.contains("sample.html"));
     // Check for complex conversion result (before:mr-2)
@@ -47,17 +47,17 @@ fn test_cli_advanced_html_conversion() {
         .success();
 
     let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
-    
+
     // Tag specific: input.text-box should have border, div.text-box should have bg
     assert!(output.contains("border-[1px solid gray]")); // from input.text-box
     assert!(output.contains("bg-[#fff]")); // from div.text-box (white -> #fff)
-    
+
     // Combinators: .container .child should have ml-4 (1rem * 4)
     assert!(output.contains("ml-4"));
-    
+
     // Combinators: .list > li should have pb-2 (0.5rem * 4)
     assert!(output.contains("pb-2"));
-    
+
     // Specificity: #unique-header should override .header
     assert!(output.contains("text-8"));
     assert!(output.contains("font-bold"));
@@ -74,7 +74,7 @@ fn test_cli_advanced_jsx_conversion() {
         .success();
 
     let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
-    
+
     // Check JSX file
     assert!(output.contains("App.jsx"));
     // Tag specific in JSX
@@ -85,15 +85,33 @@ fn test_cli_advanced_jsx_conversion() {
 fn test_cli_rem_scale_variation() {
     // Test with scale 4.0
     let mut cmd4 = Command::cargo_bin("css2tw").unwrap();
-    let out4 = String::from_utf8(cmd4.arg("convert").arg("tests/fixtures/advanced").arg("--rem-scale").arg("4.0").arg("--json").unwrap().stdout).unwrap();
-    
+    let out4 = String::from_utf8(
+        cmd4.arg("convert")
+            .arg("tests/fixtures/advanced")
+            .arg("--rem-scale")
+            .arg("4.0")
+            .arg("--json")
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+
     // 2.5rem * 4.0 = 10 -> w-10
     assert!(out4.contains("w-10"));
 
     // Test with scale 5.0
     let mut cmd5 = Command::cargo_bin("css2tw").unwrap();
-    let out5 = String::from_utf8(cmd5.arg("convert").arg("tests/fixtures/advanced").arg("--rem-scale").arg("5.0").arg("--json").unwrap().stdout).unwrap();
-    
+    let out5 = String::from_utf8(
+        cmd5.arg("convert")
+            .arg("tests/fixtures/advanced")
+            .arg("--rem-scale")
+            .arg("5.0")
+            .arg("--json")
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+
     // 2.5rem * 5.0 = 12.5 -> w-12.5
     assert!(out5.contains("w-12.5"));
 }

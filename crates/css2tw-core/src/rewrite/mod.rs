@@ -1,3 +1,3 @@
-pub mod planner;
-pub mod patch;
 pub mod diff;
+pub mod patch;
+pub mod planner;

@@ -1,7 +1,9 @@
-use lightningcss::properties::Property;
-use lightningcss::properties::display::{Display, DisplayKeyword, DisplayOutside, DisplayInside, DisplayPair};
-use lightningcss::properties::position::Position as PosProp;
 use lightningcss::printer::{Printer, PrinterOptions};
+use lightningcss::properties::display::{
+    Display, DisplayInside, DisplayKeyword, DisplayOutside, DisplayPair,
+};
+use lightningcss::properties::position::Position as PosProp;
+use lightningcss::properties::Property;
 use lightningcss::traits::ToCss as LightningToCss;
 
 fn length_to_tw(prop: &impl LightningToCss, rem_scale: f32) -> Option<String> {
@@ -12,18 +14,22 @@ fn length_to_tw(prop: &impl LightningToCss, rem_scale: f32) -> Option<String> {
             return Some("auto".to_string());
         }
         if dest.ends_with("rem") {
-            if let Ok(val) = dest[..dest.len()-3].parse::<f32>() {
+            if let Ok(val) = dest[..dest.len() - 3].parse::<f32>() {
                 return Some(format!("{}", val * rem_scale));
             }
         }
         if dest.ends_with("px") {
-            if let Ok(val) = dest[..dest.len()-2].parse::<f32>() {
+            if let Ok(val) = dest[..dest.len() - 2].parse::<f32>() {
                 return Some(format!("{}", (val / 16.0) * rem_scale));
             }
         }
         if dest.ends_with("%") {
-            if dest == "100%" { return Some("full".to_string()); }
-            if dest == "50%" { return Some("1/2".to_string()); }
+            if dest == "100%" {
+                return Some("full".to_string());
+            }
+            if dest == "50%" {
+                return Some("1/2".to_string());
+            }
             return Some(format!("[{}]", dest));
         }
         // Fallback for custom values
@@ -32,24 +38,24 @@ fn length_to_tw(prop: &impl LightningToCss, rem_scale: f32) -> Option<String> {
     None
 }
 use crate::tailwind::variant::TailwindVariant;
-use std::collections::HashMap;
 use regex::Regex;
+use std::collections::HashMap;
 
 fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
     let mut result = value.to_string();
     let re = Regex::new(r"var\((--[^,)]+)(?:,\s*([^)]+))?\)").unwrap();
-    
+
     for _ in 0..5 {
         let mut changed = false;
         let mut new_result = String::new();
         let mut last_end = 0;
-        
+
         for cap in re.captures_iter(&result) {
             let full_match = cap.get(0).unwrap();
             let name = cap.get(1).unwrap().as_str();
-            
+
             new_result.push_str(&result[last_end..full_match.start()]);
-            
+
             if let Some(val) = map.get(name) {
                 new_result.push_str(val);
                 changed = true;
@@ -61,11 +67,13 @@ fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
             }
             last_end = full_match.end();
         }
-        
+
         new_result.push_str(&result[last_end..]);
         result = new_result;
-        
-        if !changed { break; }
+
+        if !changed {
+            break;
+        }
     }
     result
 }
@@ -74,17 +82,17 @@ pub fn map_property(
     property: &Property,
     variant: &TailwindVariant,
     rem_scale: f32,
-    variable_map: &HashMap<String, String>
+    variable_map: &HashMap<String, String>,
 ) -> Option<String> {
     let prefix = variant.to_prefix();
-    
+
     // Resolve variables if any
     let mut prop_str = String::new();
     let mut printer = Printer::new(&mut prop_str, PrinterOptions::default());
     let _ = property.to_css(&mut printer, false);
-    
+
     let resolved_str = resolve_vars(&prop_str, variable_map);
-    
+
     // If it's a CSS variable definition, we don't map it to tailwind directly
     if prop_str.starts_with("--") {
         return None;
@@ -95,7 +103,7 @@ pub fn map_property(
         if let Some(pos) = resolved_str.find(':') {
             let prop_name = resolved_str[..pos].trim();
             let val = resolved_str[pos + 1..].trim().trim_end_matches(';');
-            
+
             if prop_name == "background-color" || prop_name == "background" {
                 return Some(format!("{}bg-[{}]", prefix, val));
             } else if prop_name == "color" {
@@ -119,7 +127,11 @@ pub fn map_property(
                 };
                 return Some(format!("{}m{}-[{}]", prefix, side, val));
             } else {
-                return Some(format!("{}[{}]", prefix, resolved_str.replace(": ", ":").replace(' ', "_")));
+                return Some(format!(
+                    "{}[{}]",
+                    prefix,
+                    resolved_str.replace(": ", ":").replace(' ', "_")
+                ));
             }
         }
     }
@@ -127,18 +139,22 @@ pub fn map_property(
     let result = match property {
         Property::Display(display) => match display {
             Display::Keyword(DisplayKeyword::None) => Some("hidden".to_string()),
-            Display::Pair(DisplayPair { outside, inside, is_list_item: false }) => {
-                match (outside, inside) {
-                    (DisplayOutside::Block, DisplayInside::Flow) => Some("block".to_string()),
-                    (DisplayOutside::Inline, DisplayInside::Flow) => Some("inline".to_string()),
-                    (DisplayOutside::Inline, DisplayInside::FlowRoot) => Some("inline-block".to_string()),
-                    (DisplayOutside::Block, DisplayInside::Flex(_)) => Some("flex".to_string()),
-                    (DisplayOutside::Inline, DisplayInside::Flex(_)) => Some("inline-flex".to_string()),
-                    (DisplayOutside::Block, DisplayInside::Grid) => Some("grid".to_string()),
-                    (DisplayOutside::Inline, DisplayInside::Grid) => Some("inline-grid".to_string()),
-                    _ => None,
+            Display::Pair(DisplayPair {
+                outside,
+                inside,
+                is_list_item: false,
+            }) => match (outside, inside) {
+                (DisplayOutside::Block, DisplayInside::Flow) => Some("block".to_string()),
+                (DisplayOutside::Inline, DisplayInside::Flow) => Some("inline".to_string()),
+                (DisplayOutside::Inline, DisplayInside::FlowRoot) => {
+                    Some("inline-block".to_string())
                 }
-            }
+                (DisplayOutside::Block, DisplayInside::Flex(_)) => Some("flex".to_string()),
+                (DisplayOutside::Inline, DisplayInside::Flex(_)) => Some("inline-flex".to_string()),
+                (DisplayOutside::Block, DisplayInside::Grid) => Some("grid".to_string()),
+                (DisplayOutside::Inline, DisplayInside::Grid) => Some("inline-grid".to_string()),
+                _ => None,
+            },
             _ => None,
         },
         // Common Margin
@@ -154,8 +170,8 @@ pub fn map_property(
             } else {
                 None
             }
-        },
-        
+        }
+
         // Common Padding
         Property::PaddingTop(v) => length_to_tw(v, rem_scale).map(|s| format!("pt-{}", s)),
         Property::PaddingBottom(v) => length_to_tw(v, rem_scale).map(|s| format!("pb-{}", s)),
@@ -169,7 +185,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
 
         // Sizing
         Property::Width(v) => length_to_tw(v, rem_scale).map(|s| format!("w-{}", s)),
@@ -187,7 +203,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::BackgroundColor(c) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -196,7 +212,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::Background(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -205,7 +221,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::Position(pos) => match pos {
             PosProp::Static => Some("static".to_string()),
             PosProp::Relative => Some("relative".to_string()),
@@ -221,7 +237,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::BorderRadius(v, _) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -230,7 +246,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::BorderWidth(v) => length_to_tw(v, rem_scale).map(|s| format!("border-{}", s)),
         Property::BorderColor(c) => {
             let mut dest = String::new();
@@ -240,7 +256,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::OutlineColor(c) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -249,7 +265,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::FontWeight(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -264,7 +280,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::Opacity(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -273,7 +289,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::Custom(custom) => {
             if custom.name.as_ref() == "content" {
                 let mut dest = String::new();
@@ -290,7 +306,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::BorderBottom(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -303,7 +319,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::BorderTop(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -316,7 +332,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::BorderLeft(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -329,7 +345,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::BorderRight(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -342,13 +358,17 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::Transform(v, _) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
                 if dest.starts_with("scale(") {
-                    let val = dest.strip_prefix("scale(").unwrap().strip_suffix(')').unwrap();
+                    let val = dest
+                        .strip_prefix("scale(")
+                        .unwrap()
+                        .strip_suffix(')')
+                        .unwrap();
                     Some(format!("scale-{}", val))
                 } else {
                     Some(format!("[transform:{}]", dest))
@@ -356,7 +376,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::BoxSizing(v, _) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -365,7 +385,7 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         Property::ZIndex(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -374,17 +394,37 @@ pub fn map_property(
             } else {
                 None
             }
-        },
+        }
         _ => {
             if prop_str.starts_with("content") {
-                return Some(format!("{}content-[{}]", prefix, prop_str.split_once(':').unwrap().1.trim().trim_end_matches(';').replace(' ', "_")));
+                return Some(format!(
+                    "{}content-[{}]",
+                    prefix,
+                    prop_str
+                        .split_once(':')
+                        .unwrap()
+                        .1
+                        .trim()
+                        .trim_end_matches(';')
+                        .replace(' ', "_")
+                ));
             }
             if prop_str.starts_with("box-sizing") {
-                let val = prop_str.split_once(':').unwrap().1.trim().trim_end_matches(';');
+                let val = prop_str
+                    .split_once(':')
+                    .unwrap()
+                    .1
+                    .trim()
+                    .trim_end_matches(';');
                 return Some(val.to_string());
             }
             if prop_str.starts_with("transform") {
-                let val = prop_str.split_once(':').unwrap().1.trim().trim_end_matches(';');
+                let val = prop_str
+                    .split_once(':')
+                    .unwrap()
+                    .1
+                    .trim()
+                    .trim_end_matches(';');
                 return Some(format!("{}transform-[{}]", prefix, val.replace(' ', "_")));
             }
             None
@@ -401,51 +441,63 @@ mod tests {
 
     #[test]
     fn test_map_display() {
-        use lightningcss::stylesheet::{StyleSheet, ParserOptions};
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
         let css = ".x { display: none; } .y { display: flex; }";
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        
+
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
-        
+
         let none_prop = &rules[0].declarations.declarations[0];
-        assert_eq!(map_property(none_prop, &variant, 4.0, &vars), Some("hidden".to_string()));
+        assert_eq!(
+            map_property(none_prop, &variant, 4.0, &vars),
+            Some("hidden".to_string())
+        );
 
         let flex_prop = &rules[1].declarations.declarations[0];
-        assert_eq!(map_property(flex_prop, &variant, 4.0, &vars), Some("flex".to_string()));
+        assert_eq!(
+            map_property(flex_prop, &variant, 4.0, &vars),
+            Some("flex".to_string())
+        );
     }
 
     #[test]
     fn test_map_padding_margin() {
-        use lightningcss::stylesheet::{StyleSheet, ParserOptions};
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
         let css = ".x { padding-top: 16px; margin-bottom: 1rem; }";
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        
+
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
-        
+
         let pt = &rules[0].declarations.declarations[0];
-        assert_eq!(map_property(pt, &variant, 4.0, &vars), Some("pt-4".to_string()));
+        assert_eq!(
+            map_property(pt, &variant, 4.0, &vars),
+            Some("pt-4".to_string())
+        );
 
         let mb = &rules[0].declarations.declarations[1];
-        assert_eq!(map_property(mb, &variant, 4.0, &vars), Some("mb-4".to_string()));
+        assert_eq!(
+            map_property(mb, &variant, 4.0, &vars),
+            Some("mb-4".to_string())
+        );
     }
 
     #[test]
     fn test_map_colors() {
-        use lightningcss::stylesheet::{StyleSheet, ParserOptions};
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
         let css = ".x { color: red; background-color: #f00; }";
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        
+
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
-        
+
         let color = &rules[0].declarations.declarations[0];
         let out = map_property(color, &variant, 4.0, &vars).unwrap();
         assert!(out.contains("#f00") || out.contains("red"));
@@ -457,33 +509,44 @@ mod tests {
 
     #[test]
     fn test_map_variants() {
-        use lightningcss::stylesheet::{StyleSheet, ParserOptions};
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
         let css = ".x { padding-top: 16px; }";
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        
+
         let variant = TailwindVariant::Hover;
         let vars = HashMap::new();
         let pt = &rules[0].declarations.declarations[0];
-        assert_eq!(map_property(pt, &variant, 4.0, &vars), Some("hover:pt-4".to_string()));
+        assert_eq!(
+            map_property(pt, &variant, 4.0, &vars),
+            Some("hover:pt-4".to_string())
+        );
     }
 
     #[test]
     fn test_rem_scale_variation() {
-        use lightningcss::stylesheet::{StyleSheet, ParserOptions};
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
         let css = ".x { padding-top: 16px; }";
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        
+
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
         let pt = &rules[0].declarations.declarations[0];
-        
-        assert_eq!(map_property(pt, &variant, 4.0, &vars), Some("pt-4".to_string()));
-        assert_eq!(map_property(pt, &variant, 1.0, &vars), Some("pt-1".to_string()));
-        assert_eq!(map_property(pt, &variant, 5.0, &vars), Some("pt-5".to_string()));
+
+        assert_eq!(
+            map_property(pt, &variant, 4.0, &vars),
+            Some("pt-4".to_string())
+        );
+        assert_eq!(
+            map_property(pt, &variant, 1.0, &vars),
+            Some("pt-1".to_string())
+        );
+        assert_eq!(
+            map_property(pt, &variant, 5.0, &vars),
+            Some("pt-5".to_string())
+        );
     }
 }
-

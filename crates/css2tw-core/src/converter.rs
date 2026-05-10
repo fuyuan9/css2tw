@@ -1,12 +1,12 @@
-use crate::error::Css2TwError;
 use crate::config::{Config, ParserType};
-use crate::css::parser::{parse_css, extract_style_rules, build_rule_map};
-use crate::rewrite::planner::ConversionPlanner;
+use crate::css::parser::{build_rule_map, extract_style_rules, parse_css};
+use crate::error::Css2TwError;
 use crate::rewrite::patch::apply_patches;
-use crate::source::{SourceFile, ClassUsageParser};
+use crate::rewrite::planner::ConversionPlanner;
+use crate::source::generic::GenericRegexParser;
 use crate::source::html::HtmlParser;
 use crate::source::jsx::JsxParser;
-use crate::source::generic::GenericRegexParser;
+use crate::source::{ClassUsageParser, SourceFile};
 use std::collections::HashMap;
 
 pub struct Converter {
@@ -19,7 +19,11 @@ impl Converter {
     }
 
     /// Pure function to convert a single source file given a list of CSS contents.
-    pub fn convert_file(&self, source: &SourceFile, css_contents: &[String]) -> Result<String, Css2TwError> {
+    pub fn convert_file(
+        &self,
+        source: &SourceFile,
+        css_contents: &[String],
+    ) -> Result<String, Css2TwError> {
         let mut stylesheets = Vec::new();
         for content in css_contents {
             if let Ok(stylesheet) = parse_css(content) {
@@ -54,13 +58,23 @@ impl Converter {
         let replacements = match parser_type {
             ParserType::Html => {
                 let html_parser = HtmlParser;
-                let rules = stylesheets.iter().flat_map(|s| extract_style_rules(s)).collect::<Vec<_>>();
-                html_parser.plan_html(source, &rules, self.config.tailwind.rem_scale).unwrap_or_default()
+                let rules = stylesheets
+                    .iter()
+                    .flat_map(|s| extract_style_rules(s))
+                    .collect::<Vec<_>>();
+                html_parser
+                    .plan_html(source, &rules, self.config.tailwind.rem_scale)
+                    .unwrap_or_default()
             }
             ParserType::Jsx => {
                 let jsx_parser = JsxParser;
-                let rules = stylesheets.iter().flat_map(|s| extract_style_rules(s)).collect::<Vec<_>>();
-                jsx_parser.plan_jsx(source, &rules, self.config.tailwind.rem_scale).unwrap_or_default()
+                let rules = stylesheets
+                    .iter()
+                    .flat_map(|s| extract_style_rules(s))
+                    .collect::<Vec<_>>();
+                jsx_parser
+                    .plan_jsx(source, &rules, self.config.tailwind.rem_scale)
+                    .unwrap_or_default()
             }
             ParserType::Generic => {
                 let generic_parser = GenericRegexParser;
@@ -89,18 +103,18 @@ mod tests {
     fn test_pure_conversion_with_trace() {
         let mut config = Config::default();
         config.tailwind.rem_scale = 4.0;
-        
+
         let converter = Converter::new(config);
-        
+
         let source = SourceFile {
             path: "test.html".to_string(),
             content: r#"<div class="pt-16"></div>"#.to_string(),
         };
-        
+
         let css = r#".pt-16 { padding-top: 16px; }"#.to_string();
-        
+
         let result = converter.convert_file(&source, &[css]).unwrap();
-        
+
         // Check if converted correctly (assuming resolver works)
         assert!(result.contains("pt-4"));
         assert!(!result.contains("pt-16"));
@@ -109,17 +123,20 @@ mod tests {
     #[test]
     fn test_custom_theme_injection() {
         let mut config = Config::default();
-        config.tailwind.custom_theme.insert("brand-primary".to_string(), "#ff0000".to_string());
-        
+        config
+            .tailwind
+            .custom_theme
+            .insert("brand-primary".to_string(), "#ff0000".to_string());
+
         let converter = Converter::new(config);
-        
+
         // This is a simplified test, real matching depends on tailwind module implementation
         // But we are testing if the converter can run with custom config
         let source = SourceFile {
             path: "test.jsx".to_string(),
             content: r#"<div className="btn"></div>"#.to_string(),
         };
-        
+
         let css = r#".btn { color: #ff0000; }"#.to_string();
         let _result = converter.convert_file(&source, &[css]).unwrap();
     }

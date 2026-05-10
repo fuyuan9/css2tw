@@ -1,5 +1,5 @@
-use std::process::Command;
 use std::fs;
+use std::process::Command;
 use tempfile::tempdir;
 
 #[test]
@@ -92,29 +92,101 @@ fn test_cli_mdn_selectors_coverage() {
     if !stderr.is_empty() {
         println!("Stderr: {}", stderr);
     }
-    
+
     // Check for various expected Tailwind classes
     let assert_msg = format!("Stdout: {}\nStderr: {}", stdout, stderr);
-    assert!(stdout.contains("hover:bg-"), "Should have hover variant. {}", assert_msg);
-    assert!(stdout.contains("focus:border-"), "Should have focus variant. {}", assert_msg);
-    assert!(stdout.contains("active:scale-"), "Should have active variant. {}", assert_msg);
-    assert!(stdout.contains("disabled:bg-"), "Should have disabled variant. {}", assert_msg);
-    assert!(stdout.contains("first:font-bold"), "Should have first variant. {}", assert_msg);
-    assert!(stdout.contains("last:border-b-none"), "Should have last variant. {}", assert_msg);
-    assert!(stdout.contains("odd:bg-"), "Should have odd variant. {}", assert_msg);
-    assert!(stdout.contains("even:bg-"), "Should have even variant. {}", assert_msg);
-    assert!(stdout.contains("before:content-"), "Should have before variant. {}", assert_msg);
-    assert!(stdout.contains("after:content-"), "Should have after variant. {}", assert_msg);
-    assert!(stdout.contains("placeholder:text-"), "Should have placeholder variant. {}", assert_msg);
-    assert!(stdout.contains("selection:bg-"), "Should have selection variant. {}", assert_msg);
-    
+    assert!(
+        stdout.contains("hover:bg-"),
+        "Should have hover variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("focus:border-"),
+        "Should have focus variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("active:scale-"),
+        "Should have active variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("disabled:bg-"),
+        "Should have disabled variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("first:font-bold"),
+        "Should have first variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("last:border-b-none"),
+        "Should have last variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("odd:bg-"),
+        "Should have odd variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("even:bg-"),
+        "Should have even variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("before:content-"),
+        "Should have before variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("after:content-"),
+        "Should have after variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("placeholder:text-"),
+        "Should have placeholder variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("selection:bg-"),
+        "Should have selection variant. {}",
+        assert_msg
+    );
+
     // Arbitrary variants
-    assert!(stdout.contains("nth-[3n+1]:text-"), "Should have arbitrary nth-child variant. {}", assert_msg);
-    assert!(stdout.contains("[&:nth-of-type(2)]:border-"), "Should have arbitrary nth-of-type variant. {}", assert_msg);
-    
+    assert!(
+        stdout.contains("nth-[3n+1]:text-"),
+        "Should have arbitrary nth-child variant. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("[&:nth-of-type(2)]:border-"),
+        "Should have arbitrary nth-of-type variant. {}",
+        assert_msg
+    );
+
     // Combinators
-    assert!(stdout.contains("text-[gray]"), "Should have gray text from descendant combinator. {}", assert_msg);
-    assert!(stdout.contains("text-[#000]"), "Should have black text from child combinator. {}", assert_msg);
-    assert!(stdout.contains("mt-[0]"), "Should have margin-top 0 from adjacent sibling combinator. {}", assert_msg);
-    assert!(stdout.contains("text-[#00f]"), "Should have blue text from general sibling combinator. {}", assert_msg);
+    assert!(
+        stdout.contains("text-[gray]"),
+        "Should have gray text from descendant combinator. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("text-[#000]"),
+        "Should have black text from child combinator. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("mt-[0]"),
+        "Should have margin-top 0 from adjacent sibling combinator. {}",
+        assert_msg
+    );
+    assert!(
+        stdout.contains("text-[#00f]"),
+        "Should have blue text from general sibling combinator. {}",
+        assert_msg
+    );
 }

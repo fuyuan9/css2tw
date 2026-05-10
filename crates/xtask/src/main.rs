@@ -1,6 +1,5 @@
 use std::{
-    env,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -37,14 +36,14 @@ publish-dry-run Simulates npm publish for all packages
 
 fn dist() -> Result<(), DynError> {
     let root = project_root();
-    
+
     // 1. Build
     println!("Building release binary...");
     let status = Command::new("cargo")
         .current_dir(&root)
         .args(&["build", "--release"])
         .status()?;
-    
+
     if !status.success() {
         return Err("Cargo build failed".into());
     }
@@ -56,16 +55,24 @@ fn dist() -> Result<(), DynError> {
         "aarch64" => "arm64",
         other => other,
     };
-    
+
     let platform_key = match os {
         "macos" => format!("darwin-{}", arch),
         "windows" => format!("win32-{}", arch),
         other => format!("{}-{}", other, arch),
     };
 
-    let exe_name = if os == "windows" { "css2tw.exe" } else { "css2tw" };
+    let exe_name = if os == "windows" {
+        "css2tw.exe"
+    } else {
+        "css2tw"
+    };
     let source = root.join("target").join("release").join(exe_name);
-    let dest_dir = root.join("npm").join("platforms").join(&platform_key).join("bin");
+    let dest_dir = root
+        .join("npm")
+        .join("platforms")
+        .join(&platform_key)
+        .join("bin");
     let dest = dest_dir.join(exe_name);
 
     println!("Copying {} to {}...", source.display(), dest.display());
@@ -78,7 +85,10 @@ fn dist() -> Result<(), DynError> {
         fs::set_permissions(&dest, fs::Permissions::from_mode(0o755))?;
     }
 
-    println!("Distribution package for {} prepared successfully!", platform_key);
+    println!(
+        "Distribution package for {} prepared successfully!",
+        platform_key
+    );
     Ok(())
 }
 
@@ -108,13 +118,14 @@ fn run_npm_publish(dir: &Path, dry_run: bool) -> Result<(), DynError> {
     if dry_run {
         args.push("--dry-run");
     }
-    
-    println!("\n--- {} publish in {} ---", if dry_run { "Dry-run" } else { "Real" }, dir.display());
-    let status = Command::new("npm")
-        .current_dir(dir)
-        .args(&args)
-        .status()?;
-    
+
+    println!(
+        "\n--- {} publish in {} ---",
+        if dry_run { "Dry-run" } else { "Real" },
+        dir.display()
+    );
+    let status = Command::new("npm").current_dir(dir).args(&args).status()?;
+
     if !status.success() {
         return Err(format!("npm publish failed in {}", dir.display()).into());
     }

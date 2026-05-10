@@ -1,7 +1,10 @@
-use crate::source::{ClassUsageParser, SourceFile, class_usage::{ClassUsage, Span}};
+use crate::css::resolver::StyleResolver;
 use crate::error::Css2TwError;
 use crate::rewrite::patch::Replacement;
-use crate::css::resolver::StyleResolver;
+use crate::source::{
+    class_usage::{ClassUsage, Span},
+    ClassUsageParser, SourceFile,
+};
 use regex::Regex;
 use scraper::{Html, Selector};
 
@@ -18,11 +21,12 @@ impl ClassUsageParser for HtmlParser {
             if let Some(match_val) = match_val {
                 let start = match_val.start();
                 let class_string = match_val.as_str();
-                
+
                 let mut current_pos = start;
                 for part in class_string.split_whitespace() {
                     let part_len = part.len();
-                    let part_start = source.content[current_pos..].find(part).unwrap_or(0) + current_pos;
+                    let part_start =
+                        source.content[current_pos..].find(part).unwrap_or(0) + current_pos;
                     let part_end = part_start + part_len;
 
                     classes.push(ClassUsage {
@@ -59,7 +63,7 @@ impl HtmlParser {
         for element in html.root_element().select(&Selector::parse("*").unwrap()) {
             let class_attr = element.value().attr("class");
             let tag_name = element.value().name();
-            
+
             let resolved = resolver.resolve_styles(element);
             let new_classes = resolved.to_tailwind_string(rem_scale);
 
@@ -71,19 +75,23 @@ impl HtmlParser {
                 // Find this class attribute in the source text
                 let search_pattern = format!("class=\"{}\"", class_string);
                 let search_pattern_single = format!("class='{}'", class_string);
-                
-                let found_pos = source.content[current_search_pos..].find(&search_pattern)
+
+                let found_pos = source.content[current_search_pos..]
+                    .find(&search_pattern)
                     .or_else(|| source.content[current_search_pos..].find(&search_pattern_single));
 
                 if let Some(offset) = found_pos {
                     let start_in_source = current_search_pos + offset;
                     let val_start = start_in_source + 7; // length of 'class="'
                     let val_end = val_start + class_string.len();
-                    
+
                     current_search_pos = val_end;
 
                     replacements.push(Replacement {
-                        span: Span { start: val_start, end: val_end },
+                        span: Span {
+                            start: val_start,
+                            end: val_end,
+                        },
                         before: class_string.to_string(),
                         after: new_classes,
                         confidence: crate::report::ConfidenceReport {
@@ -101,11 +109,14 @@ impl HtmlParser {
                 if let Some(offset) = source.content[current_search_pos..].find(&tag_pattern) {
                     let tag_start = current_search_pos + offset;
                     let insert_pos = tag_start + tag_pattern.len();
-                    
+
                     current_search_pos = insert_pos;
-                    
+
                     replacements.push(Replacement {
-                        span: Span { start: insert_pos, end: insert_pos },
+                        span: Span {
+                            start: insert_pos,
+                            end: insert_pos,
+                        },
                         before: "".to_string(),
                         after: format!(" class=\"{}\"", new_classes),
                         confidence: crate::report::ConfidenceReport {

@@ -53,4 +53,3 @@ pub fn classify_selector(selector: &Selector) -> SelectorType {
         SelectorType::Complex
     }
 }
-

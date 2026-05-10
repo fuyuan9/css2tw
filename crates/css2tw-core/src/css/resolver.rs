@@ -1,7 +1,7 @@
-use lightningcss::rules::style::StyleRule;
-use scraper::{Selector, ElementRef};
-use crate::tailwind::variant::TailwindVariant;
 use crate::css::parser::TailwindMapping;
+use crate::tailwind::variant::TailwindVariant;
+use lightningcss::rules::style::StyleRule;
+use scraper::{ElementRef, Selector};
 
 #[derive(Debug, Clone)]
 pub struct ResolvedElementStyle<'i> {
@@ -15,7 +15,10 @@ impl<'i> ResolvedElementStyle<'i> {
         use std::collections::{HashMap, HashSet};
 
         // Group properties by category and variant to resolve conflicts (specificity)
-        let mut best_props: HashMap<(String, crate::tailwind::variant::TailwindVariant), &TailwindMapping> = HashMap::new();
+        let mut best_props: HashMap<
+            (String, crate::tailwind::variant::TailwindVariant),
+            &TailwindMapping,
+        > = HashMap::new();
 
         for mapping in &self.properties {
             let mut name = String::new();
@@ -25,7 +28,7 @@ impl<'i> ResolvedElementStyle<'i> {
             if let Some(pos) = name.find(':') {
                 name = name[..pos].to_string();
             }
-            
+
             let key = (name, mapping.variant.clone());
             if let Some(existing) = best_props.get(&key) {
                 // If specificity is equal or higher, the later one wins
@@ -48,26 +51,33 @@ impl<'i> ResolvedElementStyle<'i> {
                 tailwind_classes.push(tw_class);
             }
         }
-        
+
         if tailwind_classes.is_empty() {
             return String::new();
         }
-        
-        let mut unique: Vec<_> = tailwind_classes.into_iter().collect::<HashSet<_>>().into_iter().collect();
+
+        let mut unique: Vec<_> = tailwind_classes
+            .into_iter()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
         unique.sort();
         unique.join(" ")
     }
 }
 
 pub struct StyleResolver<'i, 'a> {
-    pub style_rules: &'a [ &'a StyleRule<'i> ],
+    pub style_rules: &'a [&'a StyleRule<'i>],
     pub variable_map: std::collections::HashMap<String, String>,
 }
 
 impl<'i, 'a> StyleResolver<'i, 'a> {
-    pub fn new(style_rules: &'a [ &'a StyleRule<'i> ]) -> Self {
+    pub fn new(style_rules: &'a [&'a StyleRule<'i>]) -> Self {
         let variable_map = crate::css::parser::extract_variables(style_rules);
-        Self { style_rules, variable_map }
+        Self {
+            style_rules,
+            variable_map,
+        }
     }
 
     pub fn resolve_styles(&self, element: ElementRef) -> ResolvedElementStyle<'i> {
@@ -77,13 +87,16 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
             for selector in &rule.selectors.0 {
                 // Convert lightningcss selector to string for scraper
                 let mut sel_str = String::new();
-                let mut printer = lightningcss::printer::Printer::new(&mut sel_str, lightningcss::printer::PrinterOptions::default());
+                let mut printer = lightningcss::printer::Printer::new(
+                    &mut sel_str,
+                    lightningcss::printer::PrinterOptions::default(),
+                );
                 if lightningcss::traits::ToCss::to_css(selector, &mut printer).is_ok() {
                     // Note: scraper doesn't support pseudo-elements in selectors for matching against elements
                     // We need to handle pseudo-elements separately.
-                    
+
                     let clean_sel_str = self.clean_selector(selector);
-                    
+
                     let scraper_sel = Selector::parse(&clean_sel_str);
                     if let Ok(scraper_sel) = scraper_sel {
                         if scraper_sel.matches(&element) {
@@ -113,28 +126,35 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
 
     fn clean_selector(&self, selector: &lightningcss::selector::Selector<'i>) -> String {
         let mut sel_str = String::new();
-        let mut printer = lightningcss::printer::Printer::new(&mut sel_str, lightningcss::printer::PrinterOptions::default());
+        let mut printer = lightningcss::printer::Printer::new(
+            &mut sel_str,
+            lightningcss::printer::PrinterOptions::default(),
+        );
         let _ = lightningcss::traits::ToCss::to_css(selector, &mut printer);
-        
+
         let mut result = String::new();
         let mut depth = 0;
         let mut skip = false;
         for c in sel_str.chars() {
-            if c == '(' { depth += 1; }
-            if c == ')' { depth -= 1; }
-            
+            if c == '(' {
+                depth += 1;
+            }
+            if c == ')' {
+                depth -= 1;
+            }
+
             if depth == 0 && c == ':' {
                 skip = true;
             }
             if skip && depth == 0 && (c == ' ' || c == '>' || c == '+' || c == '~') {
                 skip = false;
             }
-            
+
             if !skip {
                 result.push(c);
             }
         }
-        
+
         let res = result.trim();
         if res.is_empty() {
             "*".to_string()
@@ -146,7 +166,7 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
     fn extract_variant(&self, selector: &lightningcss::selector::Selector<'i>) -> TailwindVariant {
         use cssparser::ToCss;
         let mut variant = TailwindVariant::None;
-        
+
         for component in selector.iter_raw_match_order() {
             let mut dest = String::new();
             if component.to_css(&mut dest).is_ok() {
@@ -164,7 +184,11 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                     ":nth-child(odd)" | ":nth-child(2n+1)" => variant = TailwindVariant::Odd,
                     ":nth-child(even)" | ":nth-child(2n)" => variant = TailwindVariant::Even,
                     s if s.starts_with(":nth-child(") => {
-                        let val = s.strip_prefix(":nth-child(").unwrap().strip_suffix(')').unwrap();
+                        let val = s
+                            .strip_prefix(":nth-child(")
+                            .unwrap()
+                            .strip_suffix(')')
+                            .unwrap();
                         variant = TailwindVariant::Arbitrary(format!("nth-[{}]", val));
                     }
                     "::before" | ":before" => variant = TailwindVariant::Before,
@@ -191,8 +215,8 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lightningcss::stylesheet::{StyleSheet, ParserOptions};
     use lightningcss::properties::Property;
+    use lightningcss::stylesheet::{ParserOptions, StyleSheet};
     use scraper::Html;
 
     #[test]
@@ -204,14 +228,21 @@ mod tests {
         let resolver = StyleResolver::new(&rules);
 
         let html = Html::parse_fragment("<div class=\"card\"></div>");
-        let element = html.root_element().select(&Selector::parse(".card").unwrap()).next().unwrap();
+        let element = html
+            .root_element()
+            .select(&Selector::parse(".card").unwrap())
+            .next()
+            .unwrap();
 
         let resolved = resolver.resolve_styles(element);
         assert!(!resolved.properties.is_empty());
-        
+
         // Should have padding property
         use lightningcss::properties::Property;
-        assert!(resolved.properties.iter().any(|m| matches!(m.property, Property::Padding(_))));
+        assert!(resolved
+            .properties
+            .iter()
+            .any(|m| matches!(m.property, Property::Padding(_))));
     }
 
     #[test]
@@ -224,22 +255,42 @@ mod tests {
 
         // Test button
         let html_btn = Html::parse_fragment("<button class=\"btn\"></button>");
-        let btn = html_btn.root_element().select(&Selector::parse("button").unwrap()).next().unwrap();
+        let btn = html_btn
+            .root_element()
+            .select(&Selector::parse("button").unwrap())
+            .next()
+            .unwrap();
         let res_btn = resolver.resolve_styles(btn);
-        
+
         // Should have red color
         let mut dest = String::new();
-        res_btn.properties[0].property.to_css(&mut lightningcss::printer::Printer::new(&mut dest, Default::default()), false).unwrap();
+        res_btn.properties[0]
+            .property
+            .to_css(
+                &mut lightningcss::printer::Printer::new(&mut dest, Default::default()),
+                false,
+            )
+            .unwrap();
         assert!(dest.contains("red") || dest.contains("#f00"));
 
         // Test div
         let html_div = Html::parse_fragment("<div class=\"btn\"></div>");
-        let div = html_div.root_element().select(&Selector::parse("div").unwrap()).next().unwrap();
+        let div = html_div
+            .root_element()
+            .select(&Selector::parse("div").unwrap())
+            .next()
+            .unwrap();
         let res_div = resolver.resolve_styles(div);
-        
+
         // Should have blue color
         let mut dest = String::new();
-        res_div.properties[0].property.to_css(&mut lightningcss::printer::Printer::new(&mut dest, Default::default()), false).unwrap();
+        res_div.properties[0]
+            .property
+            .to_css(
+                &mut lightningcss::printer::Printer::new(&mut dest, Default::default()),
+                false,
+            )
+            .unwrap();
         assert!(dest.contains("blue") || dest.contains("#00f"));
     }
 
@@ -252,15 +303,27 @@ mod tests {
         let resolver = StyleResolver::new(&rules);
 
         let html = Html::parse_fragment("<button class=\"btn\"></button>");
-        let btn = html.root_element().select(&Selector::parse(".btn").unwrap()).next().unwrap();
+        let btn = html
+            .root_element()
+            .select(&Selector::parse(".btn").unwrap())
+            .next()
+            .unwrap();
         let resolved = resolver.resolve_styles(btn);
 
         assert_eq!(resolved.properties.len(), 2);
-        
-        let hover_mapping = resolved.properties.iter().find(|m| matches!(m.variant, TailwindVariant::Hover)).unwrap();
+
+        let hover_mapping = resolved
+            .properties
+            .iter()
+            .find(|m| matches!(m.variant, TailwindVariant::Hover))
+            .unwrap();
         assert!(matches!(hover_mapping.property, Property::Color(_)));
 
-        let before_mapping = resolved.properties.iter().find(|m| matches!(m.variant, TailwindVariant::Before)).unwrap();
+        let before_mapping = resolved
+            .properties
+            .iter()
+            .find(|m| matches!(m.variant, TailwindVariant::Before))
+            .unwrap();
         assert!(matches!(before_mapping.property, Property::Padding(_)));
     }
 
@@ -273,12 +336,16 @@ mod tests {
         let resolver = StyleResolver::new(&rules);
 
         let html = Html::parse_fragment("<div class=\"card\"></div>");
-        let element = html.root_element().select(&Selector::parse(".card").unwrap()).next().unwrap();
+        let element = html
+            .root_element()
+            .select(&Selector::parse(".card").unwrap())
+            .next()
+            .unwrap();
 
         let resolved = resolver.resolve_styles(element);
         let tw = resolved.to_tailwind_string(4.0);
         println!("Variable resolve Output: {}", tw);
-        
+
         // Should resolve to red background
         assert!(tw.contains("bg-[#ff0000]") || tw.contains("bg-[red]"));
     }
@@ -292,12 +359,16 @@ mod tests {
         let resolver = StyleResolver::new(&rules);
 
         let html = Html::parse_fragment("<div class=\"card\"></div>");
-        let element = html.root_element().select(&Selector::parse(".card").unwrap()).next().unwrap();
+        let element = html
+            .root_element()
+            .select(&Selector::parse(".card").unwrap())
+            .next()
+            .unwrap();
 
         let resolved = resolver.resolve_styles(element);
         let tw = resolved.to_tailwind_string(4.0);
         println!("Specificity Output: {}", tw);
-        
+
         // div.card (specificity 0,1,1) should beat .card (specificity 0,1,0)
         // blue is normalized to #00f by lightningcss
         assert!(tw.contains("#00f"));

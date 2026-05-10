@@ -1,5 +1,8 @@
-use crate::source::{ClassUsageParser, SourceFile, class_usage::{ClassUsage, Span}};
 use crate::error::Css2TwError;
+use crate::source::{
+    class_usage::{ClassUsage, Span},
+    ClassUsageParser, SourceFile,
+};
 use regex::Regex;
 
 pub struct GenericRegexParser;
@@ -13,14 +16,14 @@ impl ClassUsageParser for GenericRegexParser {
         for cap in re.captures_iter(&source.content) {
             // Get the content of the attribute (group 1 or group 2 depending on quote type)
             let match_val = cap.get(1).or_else(|| cap.get(2));
-            
+
             if let Some(match_val) = match_val {
                 let attr_content_start = match_val.start();
                 let class_string = match_val.as_str();
-                
+
                 // Track position within the attribute value
                 let mut current_offset = 0;
-                
+
                 for part in class_string.split_whitespace() {
                     let part_len = part.len();
                     // Find the start of this specific class name within the attribute string
@@ -36,7 +39,7 @@ impl ClassUsageParser for GenericRegexParser {
                                 end: absolute_end,
                             },
                         });
-                        
+
                         // Advance current_offset for the next search
                         current_offset += relative_start + part_len;
                     }
@@ -59,18 +62,27 @@ mod tests {
             path: "test.php".to_string(),
             content: r#"<div class="btn primary"> <?php echo "hello"; ?> <span className='text-red'></span> </div>"#.to_string(),
         };
-        
+
         let classes = parser.extract_classes(&source).unwrap();
-        
+
         assert_eq!(classes.len(), 3);
         assert_eq!(classes[0].class_name, "btn");
         assert_eq!(classes[1].class_name, "primary");
         assert_eq!(classes[2].class_name, "text-red");
-        
+
         // Verify spans
-        assert_eq!(&source.content[classes[0].span.start..classes[0].span.end], "btn");
-        assert_eq!(&source.content[classes[1].span.start..classes[1].span.end], "primary");
-        assert_eq!(&source.content[classes[2].span.start..classes[2].span.end], "text-red");
+        assert_eq!(
+            &source.content[classes[0].span.start..classes[0].span.end],
+            "btn"
+        );
+        assert_eq!(
+            &source.content[classes[1].span.start..classes[1].span.end],
+            "primary"
+        );
+        assert_eq!(
+            &source.content[classes[2].span.start..classes[2].span.end],
+            "text-red"
+        );
     }
 
     #[test]
@@ -80,7 +92,7 @@ mod tests {
             path: "test.html".to_string(),
             content: r#"<div class="btn btn"></div>"#.to_string(),
         };
-        
+
         let classes = parser.extract_classes(&source).unwrap();
         assert_eq!(classes.len(), 2);
         assert_eq!(classes[0].class_name, "btn");

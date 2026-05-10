@@ -1,7 +1,7 @@
+pub mod class_usage;
+pub mod generic;
 pub mod html;
 pub mod jsx;
-pub mod generic;
-pub mod class_usage;
 
 use crate::error::Css2TwError;
 #[cfg(feature = "cli")]
@@ -16,7 +16,10 @@ pub struct SourceFile {
 }
 
 pub trait ClassUsageParser {
-    fn extract_classes(&self, source: &SourceFile) -> Result<Vec<class_usage::ClassUsage>, Css2TwError>;
+    fn extract_classes(
+        &self,
+        source: &SourceFile,
+    ) -> Result<Vec<class_usage::ClassUsage>, Css2TwError>;
 }
 
 pub struct Scanner;
@@ -42,10 +45,12 @@ impl Scanner {
         paths
             .par_iter()
             .filter_map(|path| {
-                std::fs::read_to_string(path).ok().map(|content| SourceFile {
-                    path: path.to_string_lossy().to_string(),
-                    content,
-                })
+                std::fs::read_to_string(path)
+                    .ok()
+                    .map(|content| SourceFile {
+                        path: path.to_string_lossy().to_string(),
+                        content,
+                    })
             })
             .collect()
     }
