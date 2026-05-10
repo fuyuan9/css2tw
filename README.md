@@ -1,17 +1,21 @@
 # css2tw
 
-A production-grade, AI-native Rust CLI tool that mechanically converts legacy CSS class usage into Tailwind CSS utility classes.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-v1.75+-orange.svg)](https://www.rust-lang.org/)
+[![NPM Version](https://img.shields.io/npm/v/css2tw.svg)](https://www.npmjs.com/package/css2tw)
 
-## Features
+**css2tw** is an AI-native Rust CLI tool designed to mechanically migrate legacy CSS class usage into Tailwind CSS utility classes. It prioritizes safety, performance, and seamless integration with AI coding agents.
 
-- **Safe & Deterministic:** Prioritizes correctness. Unsupported or unsafe CSS conversions are explicitly reported rather than silently or incorrectly transformed.
-- **Machine-Readable Output:** First-class support for structured JSON (`--json`) outputs, designed specifically to be consumed by AI coding agents.
-- **High Performance:** Built in Rust. Utilizes parallel file processing (`rayon`) and extremely fast parsers (`lightningcss` for CSS, `oxc` for JSX/TSX).
-- **Confidence Scoring:** Applies a transparent confidence model to conversions, allowing you to only write changes above a specific threshold.
-- **Dry-Run by Default:** Requires explicit `--write` flag to mutate source code. 
-- **Complex Selector Support:** Handles pseudo-classes (`:hover`, `:focus`), pseudo-elements (`::before`, `::after`), and tag-based selectors (e.g., `button.btn`).
-- **Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
-- **Configurable Scale:** Support for custom REM scales via `--rem-scale` to match your Tailwind theme.
+## 🚀 Features
+
+- **🛡️ Safe & Deterministic:** Prioritizes correctness. Unsupported or unsafe CSS conversions are explicitly reported rather than silently or incorrectly transformed.
+- **🤖 Agent-Native:** First-class support for structured JSON (`--json`) outputs, specifically designed to be consumed by AI coding agents.
+- **⚡ High Performance:** Built in Rust. Utilizes parallel file processing (`rayon`) and extremely fast parsers (`lightningcss` for CSS, `oxc` for JSX/TSX).
+- **📊 Confidence Scoring:** Applies a transparent confidence model to conversions, allowing you to filter changes based on your own risk tolerance.
+- **🔍 Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
+- **🛠️ Dry-Run by Default:** Safety first. Requires an explicit `--write` flag to mutate your source code.
+- **🧩 Complex Selector Support:** Handles pseudo-classes (`:hover`, `:focus`), pseudo-elements (`::before`), and tag-based selectors (e.g., `button.btn`).
+- **📏 Configurable Scale:** Support for custom REM scales via `--rem-scale` to match your Tailwind theme.
 
 ## Installation
 
@@ -51,66 +55,56 @@ Explain how a specific CSS class would be converted.
 css2tw explain .btn-primary --css ./src/styles.css --json
 ```
 
-## Agent Workflow Compatibility
+## 🤖 Agent Workflow Compatibility
 
-`css2tw` is built to be called by AI agents.
+`css2tw` is architected from the ground up to be called by AI agents (like GitHub Copilot, Cursor, or custom LLM-based tools). 
 
-1. Output must be stable when using `--json`.
-2. No prompts or interactive confirmations.
-3. Errors are structured.
-4. Exposes clear reasons for skipped conversions and confidence scores.
+- **✅ Stable Output:** JSON schema is strictly versioned and stable.
+- **✅ Non-Interactive:** No prompts or hidden confirmations; perfect for automated pipelines.
+- **✅ Structured Errors:** Errors are returned in JSON format, allowing agents to understand *why* a conversion failed.
+- **✅ Reason Tracking:** Every skipped conversion includes a clear justification (e.g., "Complex Selector", "Unsupported Property").
 
-See `docs/agent-usage.md` for more examples.
+Refer to [docs/agent-usage.md](docs/agent-usage.md) for detailed integration patterns.
 
-## Distribution (NPM)
+## 📦 Distribution (NPM)
 
-`css2tw` is distributed as a lightweight NPM package containing platform-specific prebuilt binaries. This allows users to use the tool via `npm install` without requiring a Rust environment.
+`css2tw` is available as a lightweight NPM package. It uses the **Optional Dependencies** pattern to deliver prebuilt native binaries for your specific platform, eliminating the need for a local Rust toolchain.
 
-This project uses the **Optional Dependencies** pattern:
-- `css2tw`: The main wrapper package.
-- `css2tw-darwin-arm64`: Binary for Apple Silicon.
-- `css2tw-darwin-x64`: Binary for Intel Mac.
-- `css2tw-linux-x64`: Binary for Linux.
-- `css2tw-win32-x64`: Binary for Windows.
+- `css2tw`: The main CLI wrapper.
+- `css2tw-darwin-arm64`: Apple Silicon.
+- `css2tw-darwin-x64`: Intel Mac.
+- `css2tw-linux-x64`: Linux.
+- `css2tw-win32-x64`: Windows.
 
-## Development
+---
 
-We use `cargo xtask` for automation tasks.
+## 🛠️ Development
 
-### Build and Package (Local)
+We use `cargo xtask` for project automation.
 
-Build the binary for your current platform and place it in the `npm/platforms` directory:
-
+### Build & Package
+Build the binary and stage it for NPM:
 ```bash
 cargo xtask dist
 ```
 
-### Publish to NPM
-
-Publish all packages to the NPM registry:
-
+### Publishing
+Publish all packages (requires proper permissions):
 ```bash
+# Dry-run
+cargo xtask publish-dry-run
+
+# Real publish
 cargo xtask publish
 ```
 
-### Publish Simulation
-
-Simulate the NPM publishing process (dry-run) for all packages:
-
-```bash
-cargo xtask publish-dry-run
-```
-
-### Test
-
-Run unit and integration tests:
-
+### Testing
+Run the full test suite:
 ```bash
 cargo test
 ```
 
-### Local Run (Development)
-
+### Local Execution
 ```bash
 cargo run --bin css2tw -- <command> [args]
 ```
