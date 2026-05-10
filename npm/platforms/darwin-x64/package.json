@@ -1,0 +1,15 @@
+{
+  "name": "css2tw-darwin-x64",
+  "version": "0.1.0",
+  "description": "Prebuilt binary for css2tw on darwin-x64",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin/css2tw"
+  ],
+  "license": "MIT"
+}

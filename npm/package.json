@@ -6,9 +6,21 @@
   "bin": {
     "css2tw": "bin/css2tw.js"
   },
+  "files": [
+    "bin"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:local": "cargo xtask dist",
+    "publish": "cargo xtask publish",
+    "publish:dry-run": "cargo xtask publish-dry-run"
   },
   "author": "fuyuan9",
-  "license": "MIT"
+  "license": "MIT",
+  "optionalDependencies": {
+    "css2tw-darwin-arm64": "0.1.0",
+    "css2tw-darwin-x64": "0.1.0",
+    "css2tw-linux-x64": "0.1.0",
+    "css2tw-win32-x64": "0.1.0"
+  }
 }
