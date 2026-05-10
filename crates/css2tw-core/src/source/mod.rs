@@ -3,7 +3,9 @@ pub mod jsx;
 pub mod class_usage;
 
 use crate::error::Css2TwError;
+#[cfg(feature = "cli")]
 use ignore::WalkBuilder;
+#[cfg(feature = "cli")]
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 
@@ -19,6 +21,7 @@ pub trait ClassUsageParser {
 pub struct Scanner;
 
 impl Scanner {
+    #[cfg(feature = "cli")]
     pub fn scan_directory<P: AsRef<Path>>(path: P) -> Result<Vec<PathBuf>, Css2TwError> {
         let walker = WalkBuilder::new(path)
             .hidden(false) // Don't ignore hidden files by default, let config decide
@@ -33,6 +36,7 @@ impl Scanner {
         Ok(files)
     }
 
+    #[cfg(feature = "cli")]
     pub fn read_files_parallel(paths: &[PathBuf]) -> Vec<SourceFile> {
         paths
             .par_iter()
