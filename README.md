@@ -62,17 +62,44 @@ css2tw explain .btn-primary --css ./src/styles.css --json
 
 See `docs/agent-usage.md` for more examples.
 
+## Distribution (NPM)
+
+`css2tw` is distributed as a lightweight NPM package containing platform-specific prebuilt binaries. This allows users to use the tool via `npm install` without requiring a Rust environment.
+
+This project uses the **Optional Dependencies** pattern:
+- `css2tw`: The main wrapper package.
+- `css2tw-darwin-arm64`: Binary for Apple Silicon.
+- `css2tw-darwin-x64`: Binary for Intel Mac.
+- `css2tw-linux-x64`: Binary for Linux.
+- `css2tw-win32-x64`: Binary for Windows.
+
 ## Development
 
-### Build
+We use `cargo xtask` for automation tasks.
 
-To build the optimized binary:
+### Build and Package (Local)
+
+Build the binary for your current platform and place it in the `npm/platforms` directory:
 
 ```bash
-cargo build --release
+cargo xtask dist
 ```
 
-The binary will be located at `target/release/css2tw`.
+### Publish to NPM
+
+Publish all packages to the NPM registry:
+
+```bash
+cargo xtask publish
+```
+
+### Publish Simulation
+
+Simulate the NPM publishing process (dry-run) for all packages:
+
+```bash
+cargo xtask publish-dry-run
+```
 
 ### Test
 
@@ -82,7 +109,7 @@ Run unit and integration tests:
 cargo test
 ```
 
-### Run Locally (Development)
+### Local Run (Development)
 
 ```bash
 cargo run --bin css2tw -- <command> [args]
