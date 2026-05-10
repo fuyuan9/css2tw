@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-binaries:
+    name: Build binary for ${{ matrix.os }} (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            pkg_name: linux-x64
+            bin_name: css2tw
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            pkg_name: darwin-x64
+            bin_name: css2tw
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            pkg_name: darwin-arm64
+            bin_name: css2tw
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            pkg_name: win32-x64
+            bin_name: css2tw.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.pkg_name }}
+          path: target/${{ matrix.target }}/release/${{ matrix.bin_name }}
+
+  publish:
+    name: Publish to NPM
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: temp-binaries
+
+      - name: Prepare packages
+        run: |
+          mkdir -p npm/platforms/darwin-arm64/bin
+          mkdir -p npm/platforms/darwin-x64/bin
+          mkdir -p npm/platforms/linux-x64/bin
+          mkdir -p npm/platforms/win32-x64/bin
+          
+          # Copy binaries to their respective folders
+          cp temp-binaries/binary-darwin-arm64/css2tw npm/platforms/darwin-arm64/bin/
+          cp temp-binaries/binary-darwin-x64/css2tw npm/platforms/darwin-x64/bin/
+          cp temp-binaries/binary-linux-x64/css2tw npm/platforms/linux-x64/bin/
+          cp temp-binaries/binary-win32-x64/css2tw.exe npm/platforms/win32-x64/bin/
+          
+          # Ensure executable permissions for Unix binaries
+          chmod +x npm/platforms/darwin-arm64/bin/css2tw
+          chmod +x npm/platforms/darwin-x64/bin/css2tw
+          chmod +x npm/platforms/linux-x64/bin/css2tw
+
+      - name: Publish to NPM
+        run: cargo xtask publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
