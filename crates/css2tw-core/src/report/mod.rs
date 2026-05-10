@@ -7,9 +7,13 @@ pub struct Report {
     pub command: String,
     pub mode: String,
     pub summary: Summary,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub changes: Vec<ChangeFile>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub unconverted: Vec<Unconverted>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<String>,
 }
 
@@ -42,8 +46,10 @@ pub struct ReplacementReport {
     pub after: String,
     pub confidence: f32,
     pub source_selector: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub reasons: Vec<String>,
     /// Step-by-step trace of the conversion logic
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trace: Vec<String>,
 }
 
@@ -59,4 +65,47 @@ pub struct Unconverted {
     pub reason: String,
     pub details: String,
     pub confidence: f32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_report_serialization_skips_empty() {
+        let report = Report {
+            version: "1.0.0".to_string(),
+            command: "scan".to_string(),
+            mode: "read_only".to_string(),
+            summary: Summary {
+                files_scanned: 1,
+                css_files_scanned: 0,
+                source_files_scanned: 1,
+                classes_found: 0,
+                classes_convertible: 0,
+                classes_partially_convertible: 0,
+                classes_unconvertible: 0,
+                files_changed: 0,
+                replacements_planned: 0,
+                warnings: 0,
+                errors: 0,
+            },
+            changes: vec![],
+            unconverted: vec![],
+            warnings: vec![],
+            errors: vec![],
+        };
+
+        let json = serde_json::to_string(&report).unwrap();
+        let json_val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        
+        // Should NOT contain "changes", "unconverted", etc. at root level if they are empty
+        assert!(json_val.get("changes").is_none());
+        assert!(json_val.get("unconverted").is_none());
+        assert!(json_val.get("warnings").is_none());
+        assert!(json_val.get("errors").is_none());
+        
+        // Summary should still have them as numbers
+        assert!(json_val["summary"].get("warnings").is_some());
+    }
 }

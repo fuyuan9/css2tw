@@ -20,3 +20,4 @@ anyhow.workspace = true
 assert_cmd = "2.2.1"
 insta = "1.47.2"
 tempfile = "3.10"
+predicates = "3.1"

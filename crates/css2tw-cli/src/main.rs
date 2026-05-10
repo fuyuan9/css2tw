@@ -16,6 +16,18 @@ struct Cli {
     /// Disable color output
     #[arg(long, global = true)]
     no_color: bool,
+
+    /// Minify JSON output
+    #[arg(long, global = true)]
+    compact: bool,
+
+    /// Omit conversion trace from output
+    #[arg(long, global = true)]
+    no_trace: bool,
+
+    /// Omit conversion reasons from output
+    #[arg(long, global = true)]
+    no_reasons: bool,
 }
 
 #[derive(Subcommand)]
@@ -25,6 +37,9 @@ enum Commands {
         /// Path to scan
         #[arg(default_value = ".")]
         path: String,
+        /// Return only the summary
+        #[arg(long)]
+        summary_only: bool,
     },
     /// Perform migration planning and optionally write changes
     Convert {
@@ -49,6 +64,9 @@ enum Commands {
         /// Custom configuration in JSON format
         #[arg(long)]
         config_json: Option<String>,
+        /// Return only the summary
+        #[arg(long)]
+        summary_only: bool,
     },
     /// Explain how a CSS class would be converted
     Explain {
@@ -69,7 +87,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Scan { path } => {
+        Commands::Scan { path, summary_only } => {
             let mut report = css2tw_core::report::Report {
                 version: env!("CARGO_PKG_VERSION").to_string(),
                 command: "scan".to_string(),
@@ -97,14 +115,19 @@ fn main() -> anyhow::Result<()> {
                 report.summary.files_scanned = files.len();
             }
 
+            if *summary_only {
+                report.changes = vec![];
+                report.unconverted = vec![];
+            }
+
             if cli.json {
-                println!("{}", serde_json::to_string_pretty(&report)?);
+                print_report(&report, &cli)?;
             } else {
                 println!("Scanned {} files in {}", report.summary.files_scanned, path);
             }
         }
-        Commands::Convert { path, dry_run, write, confidence_threshold, rem_scale, custom_theme, config_json } => {
-            let resolved_config = if let Some(json) = config_json {
+        Commands::Convert { path, dry_run, write, confidence_threshold, rem_scale, custom_theme, config_json, summary_only } => {
+            let mut resolved_config = if let Some(json) = config_json {
                 serde_json::from_str(json)?
             } else {
                 let mut cfg = css2tw_core::Config::default();
@@ -117,6 +140,11 @@ fn main() -> anyhow::Result<()> {
                 }
                 cfg
             };
+
+            // Override config with CLI flags
+            if cli.no_trace { resolved_config.agent.include_trace = false; }
+            if cli.no_reasons { resolved_config.agent.include_reasons = false; }
+            if cli.compact { resolved_config.agent.compact = true; }
 
             let is_dry_run = *dry_run || !*write;
             let mode = if is_dry_run { "dry_run" } else { "write" };
@@ -220,8 +248,8 @@ fn main() -> anyhow::Result<()> {
                                 after: rep.after.clone(),
                                 confidence: rep.confidence,
                                 source_selector: "".to_string(),
-                                reasons: rep.reasons.clone(),
-                                trace: rep.trace.clone(),
+                                reasons: if resolved_config.agent.include_reasons { rep.reasons.clone() } else { vec![] },
+                                trace: if resolved_config.agent.include_trace { rep.trace.clone() } else { vec![] },
                             });
                         }
 
@@ -239,8 +267,13 @@ fn main() -> anyhow::Result<()> {
                 }
             }
 
+            if *summary_only {
+                report.changes = vec![];
+                report.unconverted = vec![];
+            }
+
             if cli.json {
-                println!("{}", serde_json::to_string_pretty(&report)?);
+                print_report(&report, &cli)?;
             } else {
                 println!("Convert completed for path: {}. Mode: {}. Threshold: {}", path, mode, confidence_threshold);
                 println!("Scanned {} source files. Found {} classes. Planned {} replacements. Modified {} files.", 
@@ -251,10 +284,55 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Explain { selector, css } => {
-            if !cli.json {
-                println!("Explaining selector: {} in {}", selector, css);
+            let content = std::fs::read_to_string(css)?;
+            let stylesheet = css2tw_core::css::parser::parse_css(&content).map_err(|e| anyhow::anyhow!("CSS Parse Error: {:?}", e))?;
+            let rules = css2tw_core::css::parser::extract_style_rules(&stylesheet);
+            let rule_map = css2tw_core::css::parser::build_rule_map(&rules);
+
+            let selector_clean = selector.trim_start_matches('.');
+            let explanation = css2tw_core::rewrite::planner::ConversionPlanner::explain(
+                selector_clean,
+                &rule_map,
+                4.0, // default rem_scale
+            );
+
+            if cli.json {
+                let result = if let Some(exp) = explanation {
+                    serde_json::json!({
+                        "selector": selector,
+                        "convertible": true,
+                        "before": exp.before,
+                        "after": exp.after,
+                        "confidence": exp.confidence,
+                        "trace": exp.trace,
+                    })
+                } else {
+                    serde_json::json!({
+                        "selector": selector,
+                        "convertible": false,
+                        "reason": "Selector not found or no tailwind mappings available"
+                    })
+                };
+                if cli.compact {
+                    println!("{}", serde_json::to_string(&result)?);
+                } else {
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                }
+            } else {
+                match explanation {
+                    Some(exp) => {
+                        println!("Selector: {}", selector);
+                        println!("Result:   {}", exp.after);
+                        println!("Trace:");
+                        for t in exp.trace {
+                            println!("  - {}", t);
+                        }
+                    }
+                    None => {
+                        println!("Could not explain selector: {}", selector);
+                    }
+                }
             }
-            // TODO: implement explain
         }
         Commands::Config => {
             let config = Config::default();
@@ -277,5 +355,14 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    Ok(())
+}
+
+fn print_report(report: &css2tw_core::report::Report, cli: &Cli) -> anyhow::Result<()> {
+    if cli.compact {
+        println!("{}", serde_json::to_string(report)?);
+    } else {
+        println!("{}", serde_json::to_string_pretty(report)?);
+    }
     Ok(())
 }
