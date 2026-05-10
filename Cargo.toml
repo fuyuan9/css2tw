@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "crates/css2tw-core",
-    "crates/css2tw-cli"
+    "crates/css2tw-cli",
+    "crates/xtask"
 ]
 resolver = "2"
 
