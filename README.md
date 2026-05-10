@@ -71,6 +71,8 @@ css2tw explain .btn-primary --css ./src/styles.css --json
 
 These options are available for all commands.
 
+- `-V, --version`: Print version information.
+- `-h, --help`: Print help information.
 - `--json`: Output results in structured JSON format.
 - `--no-color`: Disable ANSI color codes in output.
 - `--compact`: Minify JSON output (useful for reducing token count in AI agent workflows).
@@ -108,11 +110,11 @@ Explain how a specific CSS class selector would be converted to Tailwind.
 
 #### `config`
 
-Print the resolved configuration that `css2tw` is currently using. Useful for debugging theme and engine settings.
+Print the resolved configuration that `css2tw` is currently using. Outputs in JSON format when `--json` is specified.
 
 #### `schema`
 
-Print the JSON Schema for reports and configuration files. Use this to generate type-safe integrations for AI agents.
+Print the JSON Schema for reports and configuration files. Outputs in JSON format.
 
 ## 🤖 Agent Workflow Compatibility
 

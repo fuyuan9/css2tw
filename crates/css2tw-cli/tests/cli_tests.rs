@@ -89,3 +89,44 @@ fn test_cli_explain() -> Result<(), Box<dyn std::error::Error>> {
     
     Ok(())
 }
+
+#[test]
+fn test_cli_scan_functionality() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = tempfile::tempdir()?;
+    let css_path = temp.path().join("style.css");
+    let html_path = temp.path().join("index.html");
+
+    std::fs::write(&css_path, ".pt-16 { padding-top: 16px; }")?;
+    std::fs::write(&html_path, r#"<div class="pt-16"></div>"#)?;
+
+    let mut cmd = Command::cargo_bin("css2tw")?;
+    cmd.arg("scan").arg(temp.path()).arg("--json");
+
+    let output = cmd.output()?;
+    let stdout = String::from_utf8(output.stdout)?;
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    // Scan should report replacements even though it doesn't write
+    assert_eq!(json["summary"]["replacements_planned"], 1);
+    assert_eq!(json["mode"], "read_only");
+
+    // Verify file was NOT modified
+    let content = std::fs::read_to_string(&html_path)?;
+    assert!(content.contains("pt-16"));
+
+    Ok(())
+}
+
+#[test]
+fn test_cli_no_color() -> Result<(), Box<dyn std::error::Error>> {
+    let mut cmd = Command::cargo_bin("css2tw")?;
+    cmd.arg("scan").arg(".").arg("--no-color");
+
+    let output = cmd.output()?;
+    let stdout = String::from_utf8(output.stdout)?;
+
+    // Check for absence of ANSI escape codes
+    assert!(!stdout.contains("\x1b["));
+
+    Ok(())
+}
