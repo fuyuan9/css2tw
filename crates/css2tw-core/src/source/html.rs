@@ -57,14 +57,18 @@ impl HtmlParser {
         rem_scale: f32,
     ) -> Result<Vec<Replacement>, Css2TwError> {
         let mut replacements = Vec::new();
-        let html = Html::parse_fragment(&source.content);
+        let html = Html::parse_document(&source.content);
         let resolver = StyleResolver::new(style_rules);
 
         // Track current position in source to handle multiple elements with same classes
         let mut current_search_pos = 0;
 
-        // Iterate through all elements in the document
-        for element in html.root_element().select(&Selector::parse("*").unwrap()) {
+        // Iterate through all elements in the document, including the root element (html)
+        let root = html.root_element();
+        let mut elements = vec![root];
+        elements.extend(root.select(&Selector::parse("*").unwrap()));
+
+        for element in elements {
             let class_attr = element.value().attr("class");
             let tag_name = element.value().name();
 
@@ -103,33 +107,47 @@ impl HtmlParser {
                             reasons: vec![crate::report::ConfidenceReason::FullMatch],
                         },
                         reasons: vec![],
-                        trace: vec!["Matched element in HTML fragment".to_string()],
+                        trace: vec!["Matched element in HTML document".to_string()],
                     });
                 }
             } else {
                 // Element has styles but no class attribute. We need to insert one.
-                // Find <tag_name
                 let tag_pattern = format!("<{}", tag_name);
-                if let Some(offset) = source.content[current_search_pos..].find(&tag_pattern) {
-                    let tag_start = current_search_pos + offset;
-                    let insert_pos = tag_start + tag_pattern.len();
+                let mut search_start = current_search_pos;
 
-                    current_search_pos = insert_pos;
+                while let Some(offset) = source.content[search_start..].find(&tag_pattern) {
+                    let tag_start = search_start + offset;
+                    let tag_end = tag_start + tag_pattern.len();
 
-                    replacements.push(Replacement {
-                        span: Span {
-                            start: insert_pos,
-                            end: insert_pos,
-                        },
-                        before: "".to_string(),
-                        after: format!(" class=\"{}\"", new_classes),
-                        confidence: crate::report::ConfidenceReport {
-                            score: 1.0,
-                            reasons: vec![crate::report::ConfidenceReason::FullMatch],
-                        },
-                        reasons: vec![],
-                        trace: vec!["Injected new class attribute for element".to_string()],
-                    });
+                    // Verify it's a complete tag name (followed by space, >, or /)
+                    let is_valid_tag = source.content[tag_end..]
+                        .chars()
+                        .next()
+                        .map_or(false, |c| c.is_whitespace() || c == '>' || c == '/');
+
+                    if is_valid_tag {
+                        let insert_pos = tag_end;
+                        current_search_pos = insert_pos;
+
+                        replacements.push(Replacement {
+                            span: Span {
+                                start: insert_pos,
+                                end: insert_pos,
+                            },
+                            before: "".to_string(),
+                            after: format!(" class=\"{}\"", new_classes),
+                            confidence: crate::report::ConfidenceReport {
+                                score: 1.0,
+                                reasons: vec![crate::report::ConfidenceReason::FullMatch],
+                            },
+                            reasons: vec![],
+                            trace: vec!["Injected new class attribute for element".to_string()],
+                        });
+                        break;
+                    }
+
+                    // Move past this partial match
+                    search_start = tag_end;
                 }
             }
         }
