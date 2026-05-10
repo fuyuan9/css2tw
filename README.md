@@ -65,6 +65,55 @@ Explain how a specific CSS class would be converted.
 css2tw explain .btn-primary --css ./src/styles.css --json
 ```
 
+## 🛠️ CLI Reference
+
+### Global Options
+
+These options are available for all commands.
+
+- `--json`: Output results in structured JSON format.
+- `--no-color`: Disable ANSI color codes in output.
+- `--compact`: Minify JSON output (useful for reducing token count in AI agent workflows).
+- `--no-trace`: Omit the detailed conversion trace from the output.
+- `--no-reasons`: Omit the specific reasons for conversion results from the output.
+
+### Commands
+
+#### `scan [PATH]`
+
+Analyze a repository and report convertible classes without writing any files. This is useful for initial assessment.
+
+- `[PATH]`: The directory to scan. Defaults to the current directory (`.`).
+- `--summary-only`: Return only the aggregate summary without individual class records.
+
+#### `convert [PATH]`
+
+Perform migration planning and optionally write Tailwind utility classes back to source files.
+
+- `[PATH]`: The directory to scan. Defaults to the current directory (`.`).
+- `--dry-run`: Preview changes without modifying files (output to console).
+- `--write`: Overwrite source files with converted Tailwind classes.
+- `--confidence-threshold <VALUE>`: Only apply conversions with confidence equal to or higher than this value (0.0 to 1.0). Default: `0.8`.
+- `--rem-scale <VALUE>`: The scale factor for REM units. Default: `4` (1rem = 4 Tailwind units, e.g., `1rem` -> `4` -> `w-4`).
+- `--custom-theme <KEY=VALUE>`: Inject custom theme values. Can be specified multiple times (e.g., `--custom-theme primary=#ff0000`).
+- `--config-json <JSON>`: Inject custom configuration in JSON format.
+- `--summary-only`: Return only the aggregate summary.
+
+#### `explain <SELECTOR> --css <PATH>`
+
+Explain how a specific CSS class selector would be converted to Tailwind.
+
+- `<SELECTOR>`: The CSS class selector to explain (e.g., `.btn-primary`).
+- `--css <PATH>`: **Required.** Path to the CSS file containing the selector definition.
+
+#### `config`
+
+Print the resolved configuration that `css2tw` is currently using. Useful for debugging theme and engine settings.
+
+#### `schema`
+
+Print the JSON Schema for reports and configuration files. Use this to generate type-safe integrations for AI agents.
+
 ## 🤖 Agent Workflow Compatibility
 
 `css2tw` is architected from the ground up to be called by AI agents (like GitHub Copilot, Cursor, or custom LLM-based tools). 
