@@ -1,11 +1,13 @@
 use crate::source::class_usage::Span;
 
+use crate::report::ConfidenceReport;
+
 #[derive(Debug, Clone)]
 pub struct Replacement {
     pub span: Span,
     pub before: String,
     pub after: String,
-    pub confidence: f32,
+    pub confidence: ConfidenceReport,
     pub reasons: Vec<String>,
     pub trace: Vec<String>,
 }

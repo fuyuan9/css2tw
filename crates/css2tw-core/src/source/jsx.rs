@@ -86,9 +86,15 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
                                             span: Span { start, end },
                                             before: class_string.to_string(),
                                             after: new_classes,
-                                            confidence: 1.0,
+                                            confidence: crate::report::ConfidenceReport {
+                                                score: 1.0,
+                                                reasons: vec![crate::report::ConfidenceReason::FullMatch],
+                                            },
                                             reasons: vec![],
-                                            trace: vec!["Matched JSX opening element and resolved via OXC AST".to_string()],
+                                            trace: vec![
+                                                "Matched JSX opening element and resolved via OXC AST"
+                                                    .to_string(),
+                                            ],
                                         });
                                     }
                                 }
