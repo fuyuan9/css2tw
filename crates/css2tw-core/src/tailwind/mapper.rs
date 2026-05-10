@@ -6,6 +6,7 @@ use lightningcss::properties::position::Position as PosProp;
 use lightningcss::properties::Property;
 use lightningcss::traits::ToCss as LightningToCss;
 
+/// Converts a CSS length value (px, rem, %) to a Tailwind-compatible scale value.
 fn length_to_tw(prop: &impl LightningToCss, rem_scale: f32) -> Option<String> {
     let mut dest = String::new();
     let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -41,8 +42,11 @@ use crate::tailwind::variant::TailwindVariant;
 use regex::Regex;
 use std::collections::HashMap;
 
+/// Resolves CSS `var()` references in a string using a provided variable map.
+/// Supports recursive resolution up to 5 levels deep.
 fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
     let mut result = value.to_string();
+    // Regex to capture the variable name and an optional fallback value.
     let re = Regex::new(r"var\((--[^,)]+)(?:,\s*([^)]+))?\)").unwrap();
 
     for _ in 0..5 {
@@ -78,6 +82,10 @@ fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
     result
 }
 
+/// Maps a single CSS property to its equivalent Tailwind utility class.
+///
+/// Takes into account the current variant (e.g., hover:), the REM scale factor,
+/// and any applicable CSS variables.
 pub fn map_property(
     property: &Property,
     variant: &TailwindVariant,

@@ -1,3 +1,8 @@
+//! Source file analysis and class extraction.
+//!
+//! This module provides tools to scan directories for source files,
+//! read them, and parse them to find where CSS classes are used.
+
 pub mod class_usage;
 pub mod generic;
 pub mod html;
@@ -10,21 +15,28 @@ use ignore::WalkBuilder;
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 
+/// Represents a single source file (e.g., .html, .jsx) to be processed.
 pub struct SourceFile {
+    /// Path to the file, relative or absolute.
     pub path: String,
+    /// Full text content of the file.
     pub content: String,
 }
 
+/// Trait for different types of parsers that can extract CSS class usages from a source file.
 pub trait ClassUsageParser {
+    /// Extracts all class names and their spans from the given source file.
     fn extract_classes(
         &self,
         source: &SourceFile,
     ) -> Result<Vec<class_usage::ClassUsage>, Css2TwError>;
 }
 
+/// Utility for scanning directories and reading files.
 pub struct Scanner;
 
 impl Scanner {
+    /// Scans a directory for all files recursively.
     #[cfg(feature = "cli")]
     pub fn scan_directory<P: AsRef<Path>>(path: P) -> Result<Vec<PathBuf>, Css2TwError> {
         let walker = WalkBuilder::new(path)
@@ -40,6 +52,7 @@ impl Scanner {
         Ok(files)
     }
 
+    /// Reads multiple files from disk in parallel and returns them as SourceFile objects.
     #[cfg(feature = "cli")]
     pub fn read_files_parallel(paths: &[PathBuf]) -> Vec<SourceFile> {
         paths

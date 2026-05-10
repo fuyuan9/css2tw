@@ -1,3 +1,8 @@
+//! Command-line interface for css2tw.
+//!
+//! Provides commands for scanning projects, explaining conversions,
+//! and migrating CSS to Tailwind utility classes.
+
 use clap::{Parser, Subcommand};
 use colored::*;
 use css2tw_core::Config;
@@ -208,6 +213,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Core logic for executing the migration process (scan, dry-run, or write).
 fn process_migration(
     path: &str,
     mode: &str,
@@ -451,6 +457,7 @@ fn process_migration(
     Ok(())
 }
 
+/// Formats and prints the final JSON report according to CLI flags.
 fn print_report(report: &css2tw_core::report::Report, cli: &Cli) -> anyhow::Result<()> {
     if cli.compact {
         println!("{}", serde_json::to_string(report)?);

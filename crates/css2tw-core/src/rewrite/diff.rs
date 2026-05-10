@@ -1,6 +1,7 @@
 use similar::{ChangeTag, TextDiff};
 use std::fmt::Write;
 
+/// Generates a unified diff string comparing old and new source text.
 pub fn generate_unified_diff(old: &str, new: &str, file_name: &str) -> String {
     let diff = TextDiff::from_lines(old, new);
     let mut output = String::new();

@@ -1,6 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Main configuration structure for css2tw.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -34,6 +35,7 @@ fn default_parsers() -> std::collections::HashMap<String, ParserType> {
     m
 }
 
+/// Supported parser types for source file analysis.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum ParserType {
@@ -42,6 +44,7 @@ pub enum ParserType {
     Generic,
 }
 
+/// Configuration for Tailwind CSS generation and theme matching.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TailwindConfig {
@@ -66,6 +69,7 @@ impl Default for TailwindConfig {
     }
 }
 
+/// Configuration for how source files are rewritten.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RewriteConfig {
@@ -84,6 +88,7 @@ impl Default for RewriteConfig {
     }
 }
 
+/// Configuration for AI agent integration and output optimization.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentConfig {

@@ -1,3 +1,8 @@
+//! Custom cargo commands for project maintenance (xtask).
+//!
+//! This crate provides tasks for building distributions and publishing
+//! to npm, avoiding the need for bash scripts.
+
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -34,6 +39,7 @@ publish-dry-run Simulates npm publish for all packages
     )
 }
 
+/// Builds the release binary and copies it to the appropriate npm platform directory.
 fn dist() -> Result<(), DynError> {
     let root = project_root();
 
@@ -92,6 +98,7 @@ fn dist() -> Result<(), DynError> {
     Ok(())
 }
 
+/// Publishes the npm packages (platform-specific and main wrapper).
 fn publish(dry_run: bool) -> Result<(), DynError> {
     let root = project_root();
     let npm_dir = root.join("npm");

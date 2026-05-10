@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+/// Reasons for adjusting the confidence score of a conversion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Reason {

@@ -9,16 +9,23 @@ use crate::source::jsx::JsxParser;
 use crate::source::{ClassUsageParser, SourceFile};
 use std::collections::HashMap;
 
+/// The main entry point for CSS to Tailwind conversion.
+///
+/// It holds the configuration and provides methods to process source files.
 pub struct Converter {
     config: Config,
 }
 
 impl Converter {
+    /// Creates a new Converter instance with the given configuration.
     pub fn new(config: Config) -> Self {
         Self { config }
     }
 
-    /// Pure function to convert a single source file given a list of CSS contents.
+    /// Converts a single source file using the provided CSS contents.
+    ///
+    /// This method parses the CSS, analyzes the source file for class usages,
+    /// determines the best Tailwind class replacements, and applies them to the source content.
     pub fn convert_file(
         &self,
         source: &SourceFile,

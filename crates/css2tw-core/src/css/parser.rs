@@ -8,10 +8,12 @@ use lightningcss::rules::CssRule;
 use lightningcss::stylesheet::{ParserOptions, StyleSheet};
 use std::collections::HashMap;
 
+/// A wrapper around a lightningcss StyleSheet.
 pub struct ParsedStylesheet<'a> {
     pub ast: StyleSheet<'a, 'a>,
 }
 
+/// Parses a CSS string into a lightningcss AST.
 pub fn parse_css(css_content: &str) -> Result<ParsedStylesheet<'_>, Css2TwError> {
     let options = ParserOptions::default();
     let ast = StyleSheet::parse(css_content, options)
@@ -56,6 +58,8 @@ pub fn extract_variables(style_rules: &[&StyleRule]) -> HashMap<String, String> 
     map
 }
 
+/// Represents a mapping from a CSS property to a potential Tailwind class,
+/// including any variants (like hover:) and the original selector's specificity.
 #[derive(Debug, Clone)]
 pub struct TailwindMapping<'i> {
     pub property: Property<'i>,
@@ -73,6 +77,7 @@ pub fn build_rule_map<'i, 'a>(
         let mut class_name = None;
         let mut variant = TailwindVariant::default();
 
+        // Currently we only support single-selector rules for simplicity
         let selector = &rule.selectors.0[0];
         let mut sel_str = String::new();
         {
@@ -83,6 +88,7 @@ pub fn build_rule_map<'i, 'a>(
         if sel_str.starts_with('.') {
             let base = if let Some(pos) = sel_str.find(':') {
                 let (c, p) = sel_str.split_at(pos);
+                // Map CSS pseudo-classes/elements to Tailwind variants
                 match p {
                     ":hover" => variant = TailwindVariant::Hover,
                     ":focus" => variant = TailwindVariant::Focus,

@@ -9,8 +9,10 @@ use oxc_ast_visit::Visit;
 use oxc_parser::Parser;
 use oxc_span::SourceType;
 
+/// Specialized parser for JSX/TSX files using the OXC AST parser.
 pub struct JsxParser;
 
+/// AST visitor to find all className or class string literals in JSX.
 struct ClassNameVisitor {
     classes: Vec<ClassUsage>,
 }
@@ -57,6 +59,7 @@ use crate::css::resolver::StyleResolver;
 use crate::rewrite::patch::Replacement;
 use scraper::{Html, Selector};
 
+/// AST visitor to plan Tailwind conversions in JSX.
 struct JsxPlanVisitor<'i, 'a> {
     replacements: Vec<Replacement>,
     resolver: &'a StyleResolver<'i, 'a>,
@@ -124,6 +127,7 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
 }
 
 impl JsxParser {
+    /// Plans the conversion of a JSX file by visiting its AST.
     pub fn plan_jsx(
         &self,
         source: &SourceFile,

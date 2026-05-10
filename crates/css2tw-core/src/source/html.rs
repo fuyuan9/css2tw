@@ -8,6 +8,8 @@ use crate::source::{
 use regex::Regex;
 use scraper::{Html, Selector};
 
+/// Specialized parser for HTML files.
+/// It uses a combination of regex for class extraction and a full HTML parser for complex mapping.
 pub struct HtmlParser;
 
 impl ClassUsageParser for HtmlParser {
@@ -46,6 +48,8 @@ impl ClassUsageParser for HtmlParser {
 }
 
 impl HtmlParser {
+    /// Plans the conversion of an HTML file by analyzing its full structure.
+    /// This allows resolving tag selectors and parent-child relationships.
     pub fn plan_html(
         &self,
         source: &SourceFile,

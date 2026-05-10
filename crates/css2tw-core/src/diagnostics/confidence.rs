@@ -1,8 +1,11 @@
 use crate::diagnostics::reason::Reason;
 
+/// Represents the confidence level of a conversion from CSS to Tailwind.
 #[derive(Debug, Clone)]
 pub struct Confidence {
+    /// A score between 0.0 and 1.0 indicating confidence.
     pub score: f32,
+    /// A list of reasons explaining the score.
     pub reasons: Vec<Reason>,
 }
 
@@ -24,6 +27,7 @@ impl Confidence {
     }
 }
 
+/// A utility to calculate confidence scores based on various factors.
 pub struct ConfidenceCalculator;
 
 impl ConfidenceCalculator {

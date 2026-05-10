@@ -5,12 +5,15 @@ use crate::source::{
 };
 use regex::Regex;
 
+/// A generic parser that uses regular expressions to find class names in any text file.
+/// This is a fallback parser for file types that don't have a specialized parser.
 pub struct GenericRegexParser;
 
 impl ClassUsageParser for GenericRegexParser {
     fn extract_classes(&self, source: &SourceFile) -> Result<Vec<ClassUsage>, Css2TwError> {
         let mut classes = Vec::new();
-        // Matches class="..." or className="..." with single or double quotes
+        // Matches class="..." or className="..." with single or double quotes.
+        // The regex uses a case-insensitive boundary search to avoid matching subwords.
         let re = Regex::new(r#"(?i)\b(?:class|className)\s*=\s*(?:"([^"]*)"|'([^']*)')"#).unwrap();
 
         for cap in re.captures_iter(&source.content) {

@@ -3,13 +3,18 @@ use crate::tailwind::variant::TailwindVariant;
 use lightningcss::rules::style::StyleRule;
 use scraper::{ElementRef, Selector};
 
+/// Represents the resolved styles for a specific HTML element.
 #[derive(Debug, Clone)]
 pub struct ResolvedElementStyle<'i> {
+    /// List of CSS properties mapped to potential Tailwind classes.
     pub properties: Vec<TailwindMapping<'i>>,
+    /// Map of CSS variables applicable to this element.
     pub variable_map: std::collections::HashMap<String, String>,
 }
 
 impl<'i> ResolvedElementStyle<'i> {
+    /// Converts the resolved styles into a space-separated string of Tailwind utility classes.
+    /// Handles conflict resolution based on CSS specificity.
     pub fn to_tailwind_string(&self, rem_scale: f32) -> String {
         use crate::tailwind::mapper::map_property;
         use std::collections::{HashMap, HashSet};
@@ -66,12 +71,16 @@ impl<'i> ResolvedElementStyle<'i> {
     }
 }
 
+/// Resolves CSS rules against HTML elements to determine which styles apply.
 pub struct StyleResolver<'i, 'a> {
+    /// Reference to the style rules extracted from the stylesheet.
     pub style_rules: &'a [&'a StyleRule<'i>],
+    /// Global map of CSS variables.
     pub variable_map: std::collections::HashMap<String, String>,
 }
 
 impl<'i, 'a> StyleResolver<'i, 'a> {
+    /// Creates a new StyleResolver and extracts variables from the provided rules.
     pub fn new(style_rules: &'a [&'a StyleRule<'i>]) -> Self {
         let variable_map = crate::css::parser::extract_variables(style_rules);
         Self {
@@ -80,6 +89,7 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
         }
     }
 
+    /// Resolves all applicable styles for a given element.
     pub fn resolve_styles(&self, element: ElementRef) -> ResolvedElementStyle<'i> {
         let mut resolved_props: Vec<TailwindMapping> = Vec::new();
 
@@ -124,6 +134,8 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
         }
     }
 
+    /// Removes pseudo-classes and pseudo-elements from a selector string to make it compatible with scraper.
+    /// Scraper's matcher doesn't handle pseudo-elements when matching against elements.
     fn clean_selector(&self, selector: &lightningcss::selector::Selector<'i>) -> String {
         let mut sel_str = String::new();
         let mut printer = lightningcss::printer::Printer::new(
@@ -136,6 +148,7 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
         let mut depth = 0;
         let mut skip = false;
         for c in sel_str.chars() {
+            // Handle nested selectors like :not(...)
             if c == '(' {
                 depth += 1;
             }
@@ -143,9 +156,11 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                 depth -= 1;
             }
 
+            // Start skipping at a colon (pseudo-class/element) if not inside parens
             if depth == 0 && c == ':' {
                 skip = true;
             }
+            // Stop skipping when we hit a combinator or space
             if skip && depth == 0 && (c == ' ' || c == '>' || c == '+' || c == '~') {
                 skip = false;
             }

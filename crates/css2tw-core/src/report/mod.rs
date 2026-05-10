@@ -1,6 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// The main JSON output structure of the css2tw CLI.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Report {
     pub version: String,
@@ -17,6 +18,7 @@ pub struct Report {
     pub errors: Vec<String>,
 }
 
+/// A statistical summary of the conversion process.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Summary {
     pub files_scanned: usize,
@@ -32,6 +34,7 @@ pub struct Summary {
     pub errors: usize,
 }
 
+/// Represents changes made or planned for a specific source file.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ChangeFile {
     pub file: String,
@@ -39,6 +42,7 @@ pub struct ChangeFile {
     pub replacements: Vec<ReplacementReport>,
 }
 
+/// Details of a single class replacement.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ReplacementReport {
     pub range: RangeReport,
@@ -53,12 +57,14 @@ pub struct ReplacementReport {
     pub trace: Vec<String>,
 }
 
+/// Detailed confidence score and reasons for a replacement.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
 pub struct ConfidenceReport {
     pub score: f32,
     pub reasons: Vec<ConfidenceReason>,
 }
 
+/// Specific reasons that influenced the confidence score.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(tag = "type", content = "detail")]
 pub enum ConfidenceReason {
@@ -71,12 +77,14 @@ pub enum ConfidenceReason {
     LowConfidenceProperty(String),
 }
 
+/// Byte range in the original source file.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RangeReport {
     pub start_byte: usize,
     pub end_byte: usize,
 }
 
+/// Represents a CSS class or selector that could not be converted.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Unconverted {
     pub selector: String,

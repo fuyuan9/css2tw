@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+/// Supported Tailwind CSS variants that can be applied to utility classes.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum TailwindVariant {
     #[default]
@@ -21,12 +22,12 @@ pub enum TailwindVariant {
     Placeholder,
     Marker,
     Selection,
-    // Arbitrary variants for anything else
-    // e.g. TailwindVariant::Arbitrary("nth-[2n]".to_string())
+    /// Arbitrary variants for anything not explicitly covered, e.g. `nth-[2n]`.
     Arbitrary(String),
 }
 
 impl TailwindVariant {
+    /// Returns the string prefix for this variant (e.g., "hover:").
     pub fn to_prefix(&self) -> String {
         match self {
             TailwindVariant::None => "".to_string(),

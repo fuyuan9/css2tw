@@ -1,5 +1,6 @@
 use lightningcss::selector::{Component, Selector};
 
+/// Categorizes a CSS selector into simple or complex types.
 pub enum SelectorType {
     /// A single class selector, e.g., `.btn`
     SimpleClass(String),
@@ -9,6 +10,7 @@ pub enum SelectorType {
     Complex,
 }
 
+/// Analyzes a lightningcss Selector and returns its classification.
 pub fn classify_selector(selector: &Selector) -> SelectorType {
     let mut class_name = None;
     let mut pseudo_classes = Vec::new();

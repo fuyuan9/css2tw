@@ -4,9 +4,12 @@ use crate::rewrite::patch::Replacement;
 use crate::source::class_usage::ClassUsage;
 use std::collections::HashMap;
 
+/// Plans the conversion of CSS classes to Tailwind utilities.
 pub struct ConversionPlanner;
 
 impl ConversionPlanner {
+    /// Generates a list of replacements for the given class usages based on the CSS rules.
+    /// Only replacements with a confidence score equal to or higher than the threshold are returned.
     pub fn plan(
         classes: &[ClassUsage],
         rule_map: &HashMap<String, Vec<TailwindMapping>>,
@@ -29,6 +32,8 @@ impl ConversionPlanner {
         Ok(replacements)
     }
 
+    /// Evaluates a single class name and explains how it would be converted to Tailwind.
+    /// Returns the proposed replacement along with a confidence report and trace.
     pub fn explain(
         class_name: &str,
         rule_map: &HashMap<String, Vec<TailwindMapping>>,

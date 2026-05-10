@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+/// Errors that can occur during the CSS to Tailwind conversion process.
 #[derive(Error, Debug)]
 pub enum Css2TwError {
     #[error("Internal error: {0}")]
