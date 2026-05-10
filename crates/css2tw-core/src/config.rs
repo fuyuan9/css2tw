@@ -10,6 +10,26 @@ pub struct Config {
     pub tailwind: TailwindConfig,
     pub rewrite: RewriteConfig,
     pub agent: AgentConfig,
+    #[serde(default = "default_parsers")]
+    pub parsers: std::collections::HashMap<String, ParserType>,
+}
+
+fn default_parsers() -> std::collections::HashMap<String, ParserType> {
+    let mut m = std::collections::HashMap::new();
+    m.insert("html".to_string(), ParserType::Html);
+    m.insert("js".to_string(), ParserType::Jsx);
+    m.insert("jsx".to_string(), ParserType::Jsx);
+    m.insert("ts".to_string(), ParserType::Jsx);
+    m.insert("tsx".to_string(), ParserType::Jsx);
+    m
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum ParserType {
+    Html,
+    Jsx,
+    Generic,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -65,6 +85,7 @@ impl Default for Config {
                 json_only: true,
                 deterministic: true,
             },
+            parsers: default_parsers(),
         }
     }
 }

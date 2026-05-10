@@ -1,11 +1,12 @@
 use crate::error::Css2TwError;
-use crate::config::Config;
+use crate::config::{Config, ParserType};
 use crate::css::parser::{parse_css, extract_style_rules, build_rule_map};
 use crate::rewrite::planner::ConversionPlanner;
 use crate::rewrite::patch::apply_patches;
 use crate::source::{SourceFile, ClassUsageParser};
 use crate::source::html::HtmlParser;
 use crate::source::jsx::JsxParser;
+use crate::source::generic::GenericRegexParser;
 use std::collections::HashMap;
 
 pub struct Converter {
@@ -36,23 +37,30 @@ impl Converter {
         }
 
         let path = std::path::Path::new(&source.path);
-        let replacements = if path.extension().and_then(|s| s.to_str()) == Some("html") {
-            let html_parser = HtmlParser;
-            let rules = stylesheets.iter().flat_map(|s| extract_style_rules(s)).collect::<Vec<_>>();
-            html_parser.plan_html(source, &rules, self.config.tailwind.rem_scale).unwrap_or_default()
-        } else if path.extension().and_then(|s| s.to_str()) == Some("jsx") || path.extension().and_then(|s| s.to_str()) == Some("tsx") {
-            let jsx_parser = JsxParser;
-            let rules = stylesheets.iter().flat_map(|s| extract_style_rules(s)).collect::<Vec<_>>();
-            jsx_parser.plan_jsx(source, &rules, self.config.tailwind.rem_scale).unwrap_or_default()
-        } else {
-            let jsx_parser = JsxParser;
-            let classes = jsx_parser.extract_classes(source).unwrap_or_default();
-            ConversionPlanner::plan(
-                &classes,
-                &rule_map,
-                self.config.tailwind.rem_scale,
-                self.config.confidence_threshold as f64,
-            ).unwrap_or_default()
+        let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+        let parser_type = self.config.parsers.get(extension).cloned().unwrap_or(ParserType::Generic);
+
+        let replacements = match parser_type {
+            ParserType::Html => {
+                let html_parser = HtmlParser;
+                let rules = stylesheets.iter().flat_map(|s| extract_style_rules(s)).collect::<Vec<_>>();
+                html_parser.plan_html(source, &rules, self.config.tailwind.rem_scale).unwrap_or_default()
+            }
+            ParserType::Jsx => {
+                let jsx_parser = JsxParser;
+                let rules = stylesheets.iter().flat_map(|s| extract_style_rules(s)).collect::<Vec<_>>();
+                jsx_parser.plan_jsx(source, &rules, self.config.tailwind.rem_scale).unwrap_or_default()
+            }
+            ParserType::Generic => {
+                let generic_parser = GenericRegexParser;
+                let classes = generic_parser.extract_classes(source).unwrap_or_default();
+                ConversionPlanner::plan(
+                    &classes,
+                    &rule_map,
+                    self.config.tailwind.rem_scale,
+                    self.config.confidence_threshold as f64,
+                ).unwrap_or_default()
+            }
         };
 
         Ok(apply_patches(&source.content, &replacements))

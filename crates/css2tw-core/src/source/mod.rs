@@ -1,5 +1,6 @@
 pub mod html;
 pub mod jsx;
+pub mod generic;
 pub mod class_usage;
 
 use crate::error::Css2TwError;
