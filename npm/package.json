@@ -2,7 +2,6 @@
   "name": "css2tw",
   "version": "0.1.0",
   "description": "A CLI tool to convert CSS classes to Tailwind utilities",
-  "main": "index.js",
   "bin": {
     "css2tw": "bin/css2tw.js"
   },
