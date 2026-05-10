@@ -9,13 +9,12 @@
 ## 🚀 Features
 
 - **🛡️ Safe & Deterministic:** Prioritizes correctness. Unsupported or unsafe CSS conversions are explicitly reported rather than silently or incorrectly transformed.
-- **🤖 Agent-Native:** First-class support for structured JSON (`--json`) outputs, specifically designed to be consumed by AI coding agents.
+- **🤖 Agent-Native:** First-class support for structured JSON (`--json`) outputs and JSON Schema (`css2tw schema`), specifically designed to be consumed by AI coding agents.
+- **🕸️ WASM-Compatible:** The core engine is designed to be stateless and portable, enabling execution in browser environments or Edge functions.
 - **⚡ High Performance:** Built in Rust. Utilizes parallel file processing (`rayon`) and extremely fast parsers (`lightningcss` for CSS, `oxc` for JSX/TSX).
-- **📊 Confidence Scoring:** Applies a transparent confidence model to conversions, allowing you to filter changes based on your own risk tolerance.
+- **📝 Conversion Tracing:** Provides a detailed "trace" for each conversion, explaining exactly which CSS rules led to the resulting Tailwind classes.
 - **🔍 Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
-- **🛠️ Dry-Run by Default:** Safety first. Requires an explicit `--write` flag to mutate your source code.
-- **🧩 Complex Selector Support:** Handles pseudo-classes (`:hover`, `:focus`), pseudo-elements (`::before`), and tag-based selectors (e.g., `button.btn`).
-- **📏 Configurable Scale:** Support for custom REM scales via `--rem-scale` to match your Tailwind theme.
+- **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via `--config-json` or `--custom-theme`.
 
 ## Installation
 
@@ -43,11 +42,22 @@ Perform migration planning and optionally write changes.
 # Preview changes (dry-run) with custom REM scale (1rem = 4 units)
 css2tw convert ./src --rem-scale 4.0 --json
 
+# Inject custom Tailwind config context from an agent
+css2tw convert ./src --config-json '{"tailwind": {"customTheme": {"primary": "#ff0000"}}}' --json
+
 # Apply changes with a confidence threshold
 css2tw convert ./src --write --confidence-threshold 0.95
 ```
 
-### 3. Explain Conversion
+### 3. Fetch JSON Schema
+
+Retrieve the JSON schema for reports and configurations to ensure stable integration.
+
+```bash
+css2tw schema
+```
+
+### 4. Explain Conversion
 
 Explain how a specific CSS class would be converted.
 
@@ -59,12 +69,12 @@ css2tw explain .btn-primary --css ./src/styles.css --json
 
 `css2tw` is architected from the ground up to be called by AI agents (like GitHub Copilot, Cursor, or custom LLM-based tools). 
 
-- **✅ Stable Output:** JSON schema is strictly versioned and stable.
-- **✅ Non-Interactive:** No prompts or hidden confirmations; perfect for automated pipelines.
-- **✅ Structured Errors:** Errors are returned in JSON format, allowing agents to understand *why* a conversion failed.
-- **✅ Reason Tracking:** Every skipped conversion includes a clear justification (e.g., "Complex Selector", "Unsupported Property").
+- **✅ Stable Output:** Use `css2tw schema` to get the latest report format.
+- **✅ Traceability:** Each conversion record includes a `trace` field with step-by-step reasoning.
+- **✅ Context Injection:** Agents can inject extracted `tailwind.config.js` context directly into the conversion engine.
+- **✅ Non-Interactive:** Perfect for automated pipelines and agentic loops.
 
-Refer to [docs/agent-usage.md](docs/agent-usage.md) for detailed integration patterns.
+Refer to [docs/agent-prompts.md](docs/agent-prompts.md) for detailed integration patterns and prompt examples.
 
 ## 📦 Distribution (NPM)
 
