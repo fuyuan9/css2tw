@@ -57,6 +57,12 @@ fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
     result
 }
 
+/// Escapes a value for use in Tailwind arbitrary values [...]
+/// Replaces spaces with underscores.
+fn escape_arbitrary_value(value: &str) -> String {
+    value.replace(' ', "_")
+}
+
 /// Maps a single CSS property to its equivalent Tailwind utility class.
 ///
 /// Takes into account the current variant (e.g., hover:), the REM scale factor,
@@ -88,9 +94,9 @@ pub fn map_property(
             let val = resolved_str[pos + 1..].trim().trim_end_matches(';');
 
             if prop_name == "background-color" || prop_name == "background" {
-                return Some(format!("{}bg-[{}]", prefix, val));
+                return Some(format!("{}bg-[{}]", prefix, escape_arbitrary_value(val)));
             } else if prop_name == "color" {
-                return Some(format!("{}text-[{}]", prefix, val));
+                return Some(format!("{}text-[{}]", prefix, escape_arbitrary_value(val)));
             } else if prop_name.starts_with("padding") {
                 let side = match prop_name {
                     "padding-top" => "t",
@@ -99,7 +105,12 @@ pub fn map_property(
                     "padding-right" => "r",
                     _ => "",
                 };
-                return Some(format!("{}p{}-[{}]", prefix, side, val));
+                return Some(format!(
+                    "{}p{}-[{}]",
+                    prefix,
+                    side,
+                    escape_arbitrary_value(val)
+                ));
             } else if prop_name.starts_with("margin") {
                 let side = match prop_name {
                     "margin-top" => "t",
@@ -108,12 +119,17 @@ pub fn map_property(
                     "margin-right" => "r",
                     _ => "",
                 };
-                return Some(format!("{}m{}-[{}]", prefix, side, val));
+                return Some(format!(
+                    "{}m{}-[{}]",
+                    prefix,
+                    side,
+                    escape_arbitrary_value(val)
+                ));
             } else {
                 return Some(format!(
                     "{}[{}]",
                     prefix,
-                    resolved_str.replace(": ", ":").replace(' ', "_")
+                    escape_arbitrary_value(resolved_str.replace(": ", ":").as_str())
                 ));
             }
         }
@@ -149,7 +165,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
-                Some(format!("m-[{}]", dest))
+                Some(format!("m-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -164,7 +180,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
-                Some(format!("p-[{}]", dest))
+                Some(format!("p-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -182,7 +198,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                Some(format!("text-[{}]", dest))
+                Some(format!("text-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -191,7 +207,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                Some(format!("bg-[{}]", dest))
+                Some(format!("bg-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -200,7 +216,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
-                Some(format!("bg-[{}]", dest))
+                Some(format!("bg-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -216,7 +232,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
-                Some(format!("border-[{}]", dest))
+                Some(format!("border-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -225,7 +241,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
-                Some(format!("rounded-[{}]", dest))
+                Some(format!("rounded-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -235,7 +251,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                Some(format!("border-[{}]", dest))
+                Some(format!("border-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -244,7 +260,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                Some(format!("outline-[{}]", dest))
+                Some(format!("outline-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -254,7 +270,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
-                Some(format!("opacity-[{}]", dest))
+                Some(format!("opacity-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -265,9 +281,9 @@ pub fn map_property(
                 let mut printer = Printer::new(&mut dest, PrinterOptions::default());
                 if property.to_css(&mut printer, false).is_ok() {
                     if let Some(val) = dest.strip_prefix("content:") {
-                        Some(format!("content-[{}]", val.trim()))
+                        Some(format!("content-[{}]", escape_arbitrary_value(val.trim())))
                     } else {
-                        Some(format!("content-[{}]", dest))
+                        Some(format!("content-[{}]", escape_arbitrary_value(&dest)))
                     }
                 } else {
                     None
@@ -283,7 +299,7 @@ pub fn map_property(
                 if dest == "none" {
                     Some("border-b-none".to_string())
                 } else {
-                    Some(format!("border-b-[{}]", dest))
+                    Some(format!("border-b-[{}]", escape_arbitrary_value(&dest)))
                 }
             } else {
                 None
@@ -296,7 +312,7 @@ pub fn map_property(
                 if dest == "none" {
                     Some("border-t-none".to_string())
                 } else {
-                    Some(format!("border-t-[{}]", dest))
+                    Some(format!("border-t-[{}]", escape_arbitrary_value(&dest)))
                 }
             } else {
                 None
@@ -309,7 +325,7 @@ pub fn map_property(
                 if dest == "none" {
                     Some("border-l-none".to_string())
                 } else {
-                    Some(format!("border-l-[{}]", dest))
+                    Some(format!("border-l-[{}]", escape_arbitrary_value(&dest)))
                 }
             } else {
                 None
@@ -322,7 +338,7 @@ pub fn map_property(
                 if dest == "none" {
                     Some("border-r-none".to_string())
                 } else {
-                    Some(format!("border-r-[{}]", dest))
+                    Some(format!("border-r-[{}]", escape_arbitrary_value(&dest)))
                 }
             } else {
                 None
@@ -359,7 +375,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
-                Some(format!("z-[{}]", dest))
+                Some(format!("z-[{}]", escape_arbitrary_value(&dest)))
             } else {
                 None
             }
@@ -394,7 +410,11 @@ pub fn map_property(
                     .1
                     .trim()
                     .trim_end_matches(';');
-                return Some(format!("{}transform-[{}]", prefix, val.replace(' ', "_")));
+                return Some(format!(
+                    "{}transform-[{}]",
+                    prefix,
+                    escape_arbitrary_value(val)
+                ));
             }
             None
         }

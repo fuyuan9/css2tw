@@ -56,7 +56,7 @@ fn test_cli_advanced_html_conversion() {
     let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
 
     // Tag specific: input.text-box should have border, div.text-box should have bg
-    assert!(output.contains("border-[1px solid gray]")); // from input.text-box
+    assert!(output.contains("border-[1px_solid_gray]")); // from input.text-box
     assert!(output.contains("bg-[#fff]")); // from div.text-box (white -> #fff)
 
     // Combinators: .container .child should have ml-4 (1rem * 4)
