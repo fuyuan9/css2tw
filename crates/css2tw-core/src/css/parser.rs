@@ -109,7 +109,10 @@ pub fn build_rule_map<'i, 'a>(
                     "::marker" => variant = TailwindVariant::Marker,
                     "::selection" => variant = TailwindVariant::Selection,
                     _ if p.starts_with(":nth-child(") => {
-                        if let Some(val) = p.strip_prefix(":nth-child(").and_then(|s| s.strip_suffix(')')) {
+                        if let Some(val) = p
+                            .strip_prefix(":nth-child(")
+                            .and_then(|s| s.strip_suffix(')'))
+                        {
                             variant = TailwindVariant::Arbitrary(format!("nth-[{}]", val));
                         }
                     }
