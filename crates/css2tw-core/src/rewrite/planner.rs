@@ -53,7 +53,7 @@ impl ConversionPlanner {
             mappings.len(),
             class_name
         ));
-        
+
         let mut raw_css_parts = Vec::new();
         for mapping in mappings {
             let mut dest = String::new();
@@ -98,7 +98,7 @@ impl ConversionPlanner {
         let suggestion = if new_classes.is_empty() {
             Some("No direct Tailwind mapping found. Consider manual utility application or arbitrary values.".to_string())
         } else if score < 0.8 {
-             Some("Review variables or complex properties for accuracy.".to_string())
+            Some("Review variables or complex properties for accuracy.".to_string())
         } else {
             None
         };

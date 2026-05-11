@@ -14,7 +14,7 @@ fn test_cli_scan() {
 
     let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
     // files_scanned no longer counts .css files
-    assert!(output.contains("\"files_scanned\":4")); 
+    assert!(output.contains("\"files_scanned\":4"));
 }
 
 #[test]

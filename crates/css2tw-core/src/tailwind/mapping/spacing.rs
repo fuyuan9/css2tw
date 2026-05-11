@@ -1,6 +1,6 @@
-use lightningcss::traits::ToCss as LightningToCss;
-use lightningcss::printer::{Printer, PrinterOptions};
 use super::constants::DEFAULT_REM_PX;
+use lightningcss::printer::{Printer, PrinterOptions};
+use lightningcss::traits::ToCss as LightningToCss;
 
 /// Converts a CSS length value (px, rem, %) to a Tailwind-compatible scale value.
 pub fn length_to_tw(prop: &impl LightningToCss, rem_scale: f32) -> Option<String> {

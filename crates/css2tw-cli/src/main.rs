@@ -338,7 +338,7 @@ fn process_migration(
 
     let mut other_files = Vec::new();
     let is_stdin = cli.stdin || path == "-";
-    
+
     if !is_stdin {
         if let Ok(files) = css2tw_core::source::Scanner::scan_directory(path) {
             other_files = files
@@ -349,177 +349,186 @@ fn process_migration(
     }
 
     // CSS files are now ONLY taken from explicit CLI flags
-        let mut css_files = Vec::new();
-        for extra_css in extra_css_files {
-            css_files.push(std::path::PathBuf::from(extra_css));
+    let mut css_files = Vec::new();
+    for extra_css in extra_css_files {
+        css_files.push(std::path::PathBuf::from(extra_css));
+    }
+
+    report.summary.files_scanned = other_files.len();
+    report.summary.css_files_scanned = css_files.len();
+    report.summary.source_files_scanned = other_files.len();
+
+    if css_files.is_empty() && inline_css.is_none() {
+        report.warnings.push("No CSS files or inline CSS provided. Conversion will rely only on default Tailwind mappings (if any).".to_string());
+    }
+
+    let mut css_contents = Vec::new();
+    for css_path in &css_files {
+        if let Ok(content) = std::fs::read_to_string(css_path) {
+            css_contents.push(content);
         }
+    }
 
-        report.summary.files_scanned = other_files.len();
-        report.summary.css_files_scanned = css_files.len();
-        report.summary.source_files_scanned = other_files.len();
+    // Add inline CSS from CLI
+    if let Some(inline) = inline_css {
+        css_contents.push(inline.clone());
+    }
 
-        if css_files.is_empty() && inline_css.is_none() {
-            report.warnings.push("No CSS files or inline CSS provided. Conversion will rely only on default Tailwind mappings (if any).".to_string());
-        }
+    let converter = css2tw_core::Converter::new(resolved_config.clone());
+    let source_files = if is_stdin {
+        use std::io::Read;
+        let mut content = String::new();
+        std::io::stdin().read_to_string(&mut content)?;
+        let extension = cli.stdin_type.clone().unwrap_or_else(|| "html".to_string());
+        vec![css2tw_core::source::SourceFile {
+            path: format!("stdin.{}", extension),
+            content,
+        }]
+    } else {
+        css2tw_core::source::Scanner::read_files_parallel(&other_files)
+    };
 
-        let mut css_contents = Vec::new();
-        for css_path in &css_files {
-            if let Ok(content) = std::fs::read_to_string(css_path) {
-                css_contents.push(content);
-            }
-        }
-
-        // Add inline CSS from CLI
-        if let Some(inline) = inline_css {
-            css_contents.push(inline.clone());
-        }
-
-        let converter = css2tw_core::Converter::new(resolved_config.clone());
-        let source_files = if is_stdin {
-            use std::io::Read;
-            let mut content = String::new();
-            std::io::stdin().read_to_string(&mut content)?;
-            let extension = cli.stdin_type.clone().unwrap_or_else(|| "html".to_string());
-            vec![css2tw_core::source::SourceFile {
-                path: format!("stdin.{}", extension),
-                content,
-            }]
-        } else {
-            css2tw_core::source::Scanner::read_files_parallel(&other_files)
-        };
-
-        if cli.ndjson {
-            println!("{}", serde_json::json!({
+    if cli.ndjson {
+        println!(
+            "{}",
+            serde_json::json!({
                 "type": "start",
                 "version": report.version,
                 "command": report.command
-            }));
-        }
+            })
+        );
+    }
 
-        for source_file in source_files {
-            let replacements = match converter.plan_file(&source_file, &css_contents) {
-                Ok(reps) => reps,
-                Err(e) => {
-                    report
-                        .errors
-                        .push(format!("Error planning {}: {}", source_file.path, e));
-                    continue;
-                }
+    for source_file in source_files {
+        let replacements = match converter.plan_file(&source_file, &css_contents) {
+            Ok(reps) => reps,
+            Err(e) => {
+                report
+                    .errors
+                    .push(format!("Error planning {}: {}", source_file.path, e));
+                continue;
+            }
+        };
+
+        if !replacements.is_empty() {
+            let mut has_actual_replacements = false;
+            let mut change_file = css2tw_core::report::ChangeFile {
+                file: source_file.path.clone(),
+                status: if is_stdin {
+                    "streamed".to_string()
+                } else if mode == "read_only" {
+                    "found".to_string()
+                } else if is_dry_run {
+                    "planned".to_string()
+                } else {
+                    "modified".to_string()
+                },
+                replacements: vec![],
+                patched_content: None,
             };
 
-            if !replacements.is_empty() {
-                let mut has_actual_replacements = false;
-                let mut change_file = css2tw_core::report::ChangeFile {
-                    file: source_file.path.clone(),
-                    status: if is_stdin {
-                        "streamed".to_string()
-                    } else if mode == "read_only" {
-                        "found".to_string()
-                    } else if is_dry_run {
-                        "planned".to_string()
-                    } else {
-                        "modified".to_string()
-                    },
-                    replacements: vec![],
-                    patched_content: None,
-                };
-
-                for rep in replacements {
-                    if rep.after.is_empty() {
-                        report.summary.classes_unconvertible += 1;
-                        report.unconverted.push(css2tw_core::report::Unconverted {
-                            selector: rep.before.clone(),
-                            reason: "No mapping found".to_string(),
-                            details: rep.trace.join("; "),
-                            confidence: rep.confidence.score,
-                            range: Some(css2tw_core::report::RangeReport {
+            for rep in replacements {
+                if rep.after.is_empty() {
+                    report.summary.classes_unconvertible += 1;
+                    report.unconverted.push(css2tw_core::report::Unconverted {
+                        selector: rep.before.clone(),
+                        reason: "No mapping found".to_string(),
+                        details: rep.trace.join("; "),
+                        confidence: rep.confidence.score,
+                        range: Some(css2tw_core::report::RangeReport {
+                            start_byte: rep.span.start,
+                            end_byte: rep.span.end,
+                        }),
+                        raw_css: rep.raw_css.clone(),
+                        suggestion: rep.suggestion.clone(),
+                    });
+                } else {
+                    report.summary.classes_convertible += 1;
+                    report.summary.replacements_planned += 1;
+                    has_actual_replacements = true;
+                    change_file
+                        .replacements
+                        .push(css2tw_core::report::ReplacementReport {
+                            range: css2tw_core::report::RangeReport {
                                 start_byte: rep.span.start,
                                 end_byte: rep.span.end,
-                            }),
+                            },
+                            before: rep.before.clone(),
+                            after: rep.after.clone(),
+                            confidence: rep.confidence.clone(),
+                            source_selector: "".to_string(),
+                            reasons: if resolved_config.agent.include_reasons {
+                                rep.reasons.clone()
+                            } else {
+                                vec![]
+                            },
+                            trace: if resolved_config.agent.include_trace {
+                                rep.trace.clone()
+                            } else {
+                                vec![]
+                            },
                             raw_css: rep.raw_css.clone(),
                             suggestion: rep.suggestion.clone(),
                         });
-                    } else {
-                        report.summary.classes_convertible += 1;
-                        report.summary.replacements_planned += 1;
-                        has_actual_replacements = true;
-                        change_file
-                            .replacements
-                            .push(css2tw_core::report::ReplacementReport {
-                                range: css2tw_core::report::RangeReport {
-                                    start_byte: rep.span.start,
-                                    end_byte: rep.span.end,
-                                 },
-                                before: rep.before.clone(),
-                                after: rep.after.clone(),
-                                confidence: rep.confidence.clone(),
-                                source_selector: "".to_string(),
-                                reasons: if resolved_config.agent.include_reasons {
-                                    rep.reasons.clone()
-                                } else {
-                                    vec![]
-                                },
-                                trace: if resolved_config.agent.include_trace {
-                                    rep.trace.clone()
-                                } else {
-                                    vec![]
-                                },
-                                raw_css: rep.raw_css.clone(),
-                                suggestion: rep.suggestion.clone(),
-                            });
+                }
+            }
+
+            if has_actual_replacements {
+                if cli.include_patched || mode == "write" {
+                    let actual_replacements: Vec<_> = change_file
+                        .replacements
+                        .iter()
+                        .map(|r| css2tw_core::rewrite::patch::Replacement {
+                            span: css2tw_core::source::class_usage::Span {
+                                start: r.range.start_byte,
+                                end: r.range.end_byte,
+                            },
+                            before: r.before.clone(),
+                            after: r.after.clone(),
+                            confidence: r.confidence.clone(),
+                            reasons: r.reasons.clone(),
+                            trace: r.trace.clone(),
+                            raw_css: r.raw_css.clone(),
+                            suggestion: r.suggestion.clone(),
+                        })
+                        .collect();
+
+                    let patched = css2tw_core::rewrite::patch::apply_patches(
+                        &source_file.content,
+                        &actual_replacements,
+                    );
+                    if cli.include_patched {
+                        change_file.patched_content = Some(patched.clone());
+                    }
+                    if mode == "write" && !is_stdin {
+                        if let Err(e) = std::fs::write(&source_file.path, patched) {
+                            report
+                                .errors
+                                .push(format!("Failed to write {}: {}", source_file.path, e));
+                        } else {
+                            report.summary.files_changed += 1;
+                        }
                     }
                 }
 
-                if has_actual_replacements {
-                    if cli.include_patched || mode == "write" {
-                        let actual_replacements: Vec<_> = change_file.replacements.iter().map(|r| {
-                            css2tw_core::rewrite::patch::Replacement {
-                                span: css2tw_core::source::class_usage::Span {
-                                    start: r.range.start_byte,
-                                    end: r.range.end_byte,
-                                },
-                                before: r.before.clone(),
-                                after: r.after.clone(),
-                                confidence: r.confidence.clone(),
-                                reasons: r.reasons.clone(),
-                                trace: r.trace.clone(),
-                                raw_css: r.raw_css.clone(),
-                                suggestion: r.suggestion.clone(),
-                            }
-                        }).collect();
+                let is_filtered =
+                    !cli.file_only.is_empty() && !cli.file_only.contains(&source_file.path);
 
-                        let patched = css2tw_core::rewrite::patch::apply_patches(
-                            &source_file.content,
-                            &actual_replacements,
-                        );
-                        if cli.include_patched {
-                            change_file.patched_content = Some(patched.clone());
-                        }
-                        if mode == "write" && !is_stdin {
-                            if let Err(e) = std::fs::write(&source_file.path, patched) {
-                                report
-                                    .errors
-                                    .push(format!("Failed to write {}: {}", source_file.path, e));
-                            } else {
-                                report.summary.files_changed += 1;
-                            }
-                        }
-                    }
-
-                    let is_filtered = !cli.file_only.is_empty() && !cli.file_only.contains(&source_file.path);
-                    
-                    if !is_filtered {
-                        if cli.ndjson {
-                            println!("{}", serde_json::json!({
+                if !is_filtered {
+                    if cli.ndjson {
+                        println!(
+                            "{}",
+                            serde_json::json!({
                                 "type": "file",
                                 "data": change_file
-                            }));
-                        }
-                        report.changes.push(change_file);
+                            })
+                        );
                     }
+                    report.changes.push(change_file);
                 }
             }
         }
+    }
 
     if summary_only {
         report.changes = vec![];
@@ -527,10 +536,13 @@ fn process_migration(
     }
 
     if cli.ndjson {
-        println!("{}", serde_json::json!({
-            "type": "summary",
-            "data": report.summary
-        }));
+        println!(
+            "{}",
+            serde_json::json!({
+                "type": "summary",
+                "data": report.summary
+            })
+        );
     } else if cli.json {
         print_report(&report, cli)?;
     } else {
