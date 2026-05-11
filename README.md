@@ -8,15 +8,15 @@
 
 ## 🚀 Features
 
+- **🎯 AI-First Precision:** Optimized for mechanical code migration. By default, it only transforms elements with existing `class` attributes to ensure predictable, non-invasive updates to legacy codebases.
 - **🛡️ Safe & Deterministic:** Prioritizes correctness. Unsupported or unsafe CSS conversions are explicitly reported rather than silently or incorrectly transformed.
 - **🤖 Agent-Native:** First-class support for structured JSON (`--json`) outputs and JSON Schema (`css2tw schema`), specifically designed to be consumed by AI coding agents.
-- **🕸️ WASM-Compatible:** The core engine is designed to be stateless and portable, enabling execution in browser environments or Edge functions.
 - **⚡ High Performance:** Built in Rust. Utilizes parallel file processing (`rayon`) and extremely fast parsers (`lightningcss` for CSS, `oxc` for JSX/TSX).
+- **🧩 Template Fragment Support:** Robust parsing for fragmented template files (PHP, Blade, Jinja2, etc.) while protecting template tags (e.g., `{{ ... }}`).
 - **📝 Conversion Tracing:** Provides a detailed "trace" for each conversion, explaining exactly which CSS rules led to the resulting Tailwind classes.
 - **🔍 Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
-- **🧩 Template Fragment Support:** Robust parsing for fragmented template files (PHP, Blade, Jinja2, Twig, etc.). Uses a placeholder technique to protect template tags (e.g., `{{ ... }}`, `<?= ... ?>`) from being mangled or stripped during structural analysis.
-- **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via `--config-json` or `--custom-theme`.
-- **💉 Explicit CSS Injection:** To ensure deterministic behavior, CSS definitions must be explicitly provided via CLI flags (`--css-file`, `--css-inline`). Automatic scanning of CSS files is disabled by default to prioritize clarity and control.
+- **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via CLI or JSON config.
+- **💉 Explicit CSS Injection:** To ensure deterministic behavior, CSS definitions must be explicitly provided. Automatic scanning is disabled by default to prioritize control.
 
 ## Installation
 

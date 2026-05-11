@@ -52,25 +52,25 @@ fn test_cli_mdn_selectors_coverage() {
 
     let html_content = r#"
         <div id="main" class="box">
-            <h1>Title</h1>
-            <p>Direct p after h1</p>
-            <p>Another p</p>
-            <section>
-                <p>P inside section</p>
+            <h1 class="header">Title</h1>
+            <p class="text">Direct p after h1</p>
+            <p class="text">Another p</p>
+            <section class="sec">
+                <p class="text">P inside section</p>
             </section>
-            <article>
-                <p>P inside article</p>
+            <article class="art">
+                <p class="text">P inside article</p>
             </article>
             <button class="btn">Click me</button>
-            <input type="text" placeholder="Type here...">
-            <input type="checkbox" checked id="c1"><label for="c1">Checked</label>
-            <input type="text" disabled value="Disabled">
-            <a href="https://google.com">Google</a>
-            <ul>
-                <li>One</li>
-                <li>Two</li>
-                <li>Three</li>
-                <li>Four</li>
+            <input class="input" type="text" placeholder="Type here...">
+            <input class="input" type="checkbox" checked id="c1"><label class="label" for="c1">Checked</label>
+            <input class="input" type="text" disabled value="Disabled">
+            <a class="link" href="https://google.com">Google</a>
+            <ul class="list">
+                <li class="item">One</li>
+                <li class="item">Two</li>
+                <li class="item">Three</li>
+                <li class="item">Four</li>
             </ul>
         </div>
     "#;

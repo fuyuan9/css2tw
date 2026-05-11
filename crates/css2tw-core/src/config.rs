@@ -102,6 +102,7 @@ pub struct RewriteConfig {
     pub preserve_unknown_css: bool,
     pub remove_converted_css: bool,
     pub sort_tailwind_classes: bool,
+    pub migrate_only_existing_classes: bool,
 }
 
 impl Default for RewriteConfig {
@@ -110,6 +111,7 @@ impl Default for RewriteConfig {
             preserve_unknown_css: true,
             remove_converted_css: false,
             sort_tailwind_classes: true,
+            migrate_only_existing_classes: true,
         }
     }
 }
@@ -164,6 +166,7 @@ impl Default for Config {
                 preserve_unknown_css: true,
                 remove_converted_css: false,
                 sort_tailwind_classes: true,
+                migrate_only_existing_classes: true,
             },
             agent: AgentConfig {
                 deterministic: true,
@@ -199,7 +202,8 @@ mod tests {
             "rewrite": {
                 "preserveUnknownCss": true,
                 "removeConvertedCss": false,
-                "sortTailwindClasses": true
+                "sortTailwindClasses": true,
+                "migrateOnlyExistingClasses": true
             },
             "agent": {
                 "deterministic": true

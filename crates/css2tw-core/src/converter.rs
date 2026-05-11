@@ -80,7 +80,12 @@ impl Converter {
                     .flat_map(|s| extract_style_rules(s))
                     .collect::<Vec<_>>();
                 html_parser
-                    .plan_html(source, &rules, self.config.tailwind.rem_scale)
+                    .plan_html(
+                        source,
+                        &rules,
+                        self.config.tailwind.rem_scale,
+                        self.config.rewrite.migrate_only_existing_classes,
+                    )
                     .unwrap_or_default()
             }
             ParserType::Jsx => {
@@ -90,7 +95,12 @@ impl Converter {
                     .flat_map(|s| extract_style_rules(s))
                     .collect::<Vec<_>>();
                 jsx_parser
-                    .plan_jsx(source, &rules, self.config.tailwind.rem_scale)
+                    .plan_jsx(
+                        source,
+                        &rules,
+                        self.config.tailwind.rem_scale,
+                        self.config.rewrite.migrate_only_existing_classes,
+                    )
                     .unwrap_or_default()
             }
             ParserType::Fragment => {
@@ -100,7 +110,12 @@ impl Converter {
                     .flat_map(|s| extract_style_rules(s))
                     .collect::<Vec<_>>();
                 fragment_parser
-                    .plan_fragment(source, &rules, self.config.tailwind.rem_scale)
+                    .plan_fragment(
+                        source,
+                        &rules,
+                        self.config.tailwind.rem_scale,
+                        self.config.rewrite.migrate_only_existing_classes,
+                    )
                     .unwrap_or_default()
             }
             ParserType::Generic => {

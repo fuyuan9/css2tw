@@ -55,6 +55,7 @@ impl HtmlParser {
         source: &SourceFile,
         style_rules: &[&lightningcss::rules::style::StyleRule],
         rem_scale: f32,
+        migrate_only_existing_classes: bool,
     ) -> Result<Vec<Replacement>, Css2TwError> {
         let mut replacements = Vec::new();
         let html = Html::parse_document(&source.content);
@@ -77,6 +78,10 @@ impl HtmlParser {
             let new_classes = resolved.to_tailwind_string(rem_scale);
 
             if new_classes.is_empty() && raw_css.is_none() {
+                continue;
+            }
+
+            if migrate_only_existing_classes && class_attr.is_none() {
                 continue;
             }
 

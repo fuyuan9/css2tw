@@ -62,6 +62,7 @@ impl FragmentParser {
         source: &SourceFile,
         style_rules: &[&lightningcss::rules::style::StyleRule],
         rem_scale: f32,
+        migrate_only_existing_classes: bool,
     ) -> Result<Vec<Replacement>, Css2TwError> {
         let mut replacements = Vec::new();
 
@@ -115,6 +116,10 @@ impl FragmentParser {
             let raw_css = resolved.get_raw_css();
 
             if tailwind_classes.is_empty() && class_attr.is_none() && raw_css.is_none() {
+                continue;
+            }
+
+            if migrate_only_existing_classes && class_attr.is_none() {
                 continue;
             }
 
