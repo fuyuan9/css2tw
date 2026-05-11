@@ -14,14 +14,16 @@ This tool is designed to be highly interoperable with AI agents for automated co
 Scan the project to understand the migration scope:
 
 ```bash
-css2tw scan ./src --json
+# Scan using a specific CSS context
+css2tw scan ./src --css-file ./src/app.css --json
 ```
 
 ### 2. Automated Migration Loop
 For fully autonomous migrations, pass `--write` and a high `--confidence-threshold`:
 
 ```bash
-css2tw convert ./src --write --confidence-threshold 0.90 --json
+# Convert using specific CSS context
+css2tw convert ./src --css-file ./src/app.css --write --confidence-threshold 0.90 --json
 ```
 
 ### 3. Debugging a Specific Class

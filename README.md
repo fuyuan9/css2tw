@@ -16,7 +16,7 @@
 - **🔍 Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
 - **🧩 Template Fragment Support:** Robust parsing for fragmented template files (PHP, Blade, Jinja2, Twig, etc.). Uses a placeholder technique to protect template tags (e.g., `{{ ... }}`, `<?= ... ?>`) from being mangled or stripped during structural analysis.
 - **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via `--config-json` or `--custom-theme`.
-- **💉 Manual CSS Injection:** Provide external CSS definitions directly via CLI flags (`--css-file`, `--css-inline`), enabling conversion of isolated fragments that lack direct style references.
+- **💉 Explicit CSS Injection:** To ensure deterministic behavior, CSS definitions must be explicitly provided via CLI flags (`--css-file`, `--css-inline`). Automatic scanning of CSS files is disabled by default to prioritize clarity and control.
 
 ## Installation
 
@@ -30,10 +30,11 @@ cargo install css2tw-cli
 
 ### 1. Scan a Repository
 
-Analyze a repository and report convertible classes without writing files.
+Analyze a repository and report convertible classes. CSS context must be explicitly provided.
 
 ```bash
-css2tw scan ./src --json
+# Scan using a specific CSS file
+css2tw scan ./src --css-file styles.css --json
 ```
 
 ### 2. Convert Classes
@@ -97,16 +98,16 @@ These options are available for all commands.
 
 #### `scan [PATH]`
 
-Analyze a repository and report convertible classes without writing any files. This is useful for initial assessment.
+Analyze a repository and report convertible classes without writing any files. **Note: CSS context must be explicitly provided via `--css-file` or `--css-inline`.**
 
 - `[PATH]`: The directory to scan. Defaults to the current directory (`.`).
 - `--summary-only`: Return only the aggregate summary without individual class records.
-- `--css-file <PATH>`: Path to an external CSS file to include in the conversion logic. Can be specified multiple times.
-- `--css-inline <CSS>`: A string containing inline CSS definitions to include.
+- `--css-file <PATH>`: Path to an external CSS file to include in the conversion logic. Required for CSS-based conversion.
+- `--css-inline <CSS>`: A string containing inline CSS definitions.
 
 #### `convert [PATH]`
 
-Perform migration planning and optionally write Tailwind utility classes back to source files.
+Perform migration planning and optionally write Tailwind utility classes back to source files. **Note: CSS context must be explicitly provided via `--css-file` or `--css-inline`.**
 
 - `[PATH]`: The directory to scan. Defaults to the current directory (`.`).
 - `--dry-run`: Preview changes without modifying files (output to console).
@@ -116,8 +117,8 @@ Perform migration planning and optionally write Tailwind utility classes back to
 - `--custom-theme <KEY=VALUE>`: Inject custom theme values. Can be specified multiple times (e.g., `--custom-theme primary=#ff0000`).
 - `--config-json <JSON>`: Inject custom configuration in JSON format.
 - `--summary-only`: Return only the aggregate summary.
-- `--css-file <PATH>`: Path to an external CSS file to include. Can be specified multiple times.
-- `--css-inline <CSS>`: A string containing inline CSS definitions to include.
+- `--css-file <PATH>`: Path to an external CSS file to include. Required for CSS-based conversion.
+- `--css-inline <CSS>`: A string containing inline CSS definitions.
 
 #### `explain <SELECTOR> --css <PATH>`
 

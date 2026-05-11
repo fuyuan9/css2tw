@@ -6,21 +6,25 @@ fn test_cli_scan() {
     let assert = cmd
         .arg("scan")
         .arg("tests/fixtures")
+        .arg("--css-file")
+        .arg("tests/fixtures/sample.css")
         .arg("--json")
         .assert()
         .success();
 
     let output = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
-    // Since output contains absolute paths and versions, we mock snapshot assertion.
-    // In a real test, we'd redact the variable parts using insta redactions.
-    assert!(output.contains("\"files_scanned\": 7"));
+    // files_scanned no longer counts .css files
+    assert!(output.contains("\"files_scanned\": 4")); 
 }
+
 #[test]
 fn test_cli_convert_complex() {
     let mut cmd = Command::cargo_bin("css2tw").unwrap();
     let assert = cmd
         .arg("convert")
         .arg("tests/fixtures")
+        .arg("--css-file")
+        .arg("tests/fixtures/comprehensive.css")
         .arg("--json")
         .assert()
         .success();
@@ -34,12 +38,15 @@ fn test_cli_convert_complex() {
     // Check for hover variant
     assert!(output.contains("hover:bg-[#00008b]"));
 }
+
 #[test]
 fn test_cli_advanced_html_conversion() {
     let mut cmd = Command::cargo_bin("css2tw").unwrap();
     let assert = cmd
         .arg("convert")
         .arg("tests/fixtures/advanced")
+        .arg("--css-file")
+        .arg("tests/fixtures/advanced/styles.css")
         .arg("--json")
         .arg("--rem-scale")
         .arg("4.0")
@@ -69,6 +76,8 @@ fn test_cli_advanced_jsx_conversion() {
     let assert = cmd
         .arg("convert")
         .arg("tests/fixtures/advanced")
+        .arg("--css-file")
+        .arg("tests/fixtures/advanced/styles.css")
         .arg("--json")
         .assert()
         .success();
@@ -88,6 +97,8 @@ fn test_cli_rem_scale_variation() {
     let out4 = String::from_utf8(
         cmd4.arg("convert")
             .arg("tests/fixtures/advanced")
+            .arg("--css-file")
+            .arg("tests/fixtures/advanced/styles.css")
             .arg("--rem-scale")
             .arg("4.0")
             .arg("--json")
@@ -104,6 +115,8 @@ fn test_cli_rem_scale_variation() {
     let out5 = String::from_utf8(
         cmd5.arg("convert")
             .arg("tests/fixtures/advanced")
+            .arg("--css-file")
+            .arg("tests/fixtures/advanced/styles.css")
             .arg("--rem-scale")
             .arg("5.0")
             .arg("--json")

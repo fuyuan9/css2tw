@@ -83,6 +83,8 @@ fn test_cli_mdn_selectors_coverage() {
         .arg("--")
         .arg("convert")
         .arg(dir.path().to_str().unwrap())
+        .arg("--css-file")
+        .arg(css_path.to_str().unwrap())
         .arg("--json")
         .output()
         .expect("failed to execute process");

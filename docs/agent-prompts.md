@@ -51,21 +51,21 @@ If `css2tw` reports an unconverted class, the agent should:
 2. Attempt a manual conversion or ask the user for clarification.
 3. Use `css2tw explain <selector> --css <path>` to get more details on why the engine struggled.
 
-## 5. Fragment Conversion (PHP, Blade, etc.)
+## 5. CSS Context Injection (Mandatory)
 
-When working with partial template files that don't have direct CSS references, agents should locate the relevant CSS files and inject them.
+To ensure deterministic results, `css2tw` does not automatically scan for CSS files in the target directory. Agents **must** identify and provide relevant CSS context.
 
-### Strategy for Agents:
-1. Identify the template file to be converted (e.g., `Button.blade.php`).
-2. Search the repository for relevant CSS files (e.g., `app.css`).
-3. Run `css2tw` using the `--css-file` flag to provide context.
+### Recommended Strategy for Agents:
+1.  **Locate Style Definitions**: Search the repository for `.css`, `.scss`, or `.less` files that define the classes used in the target source files.
+2.  **Inject via CLI**: Pass the found file paths using `--css-file`.
 
 ```bash
-# Agent-driven conversion of a fragment
-css2tw convert ./resources/views/partials/header.blade.php --css-file ./public/css/main.css --write --json
+# Agent-driven conversion with explicit CSS context
+css2tw convert ./src/components --css-file ./src/styles/main.css --write --json
 ```
 
-Alternatively, if the agent has already read the CSS content, it can pass it directly:
+3.  **Use Inline CSS**: If the agent has already extracted specific rules, it can pass them directly using `--css-inline`.
+
 ```bash
-css2tw convert ./partial.php --css-inline ".btn { color: blue; }" --write --json
+css2tw scan ./src --css-inline ".btn-red { color: red; }" --json
 ```

@@ -305,18 +305,26 @@ fn process_migration(
     };
 
     if let Ok(files) = css2tw_core::source::Scanner::scan_directory(path) {
-        let (mut css_files, other_files): (Vec<_>, Vec<_>) = files
+        // We no longer automatically scan for .css files in the directory.
+        // Instead, we only treat non-css files as potential source files to be converted.
+        let other_files: Vec<_> = files
             .into_iter()
-            .partition(|p| p.extension().and_then(|s| s.to_str()) == Some("css"));
+            .filter(|p| p.extension().and_then(|s| s.to_str()) != Some("css"))
+            .collect();
 
-        // Add extra CSS files from CLI
+        // CSS files are now ONLY taken from explicit CLI flags
+        let mut css_files = Vec::new();
         for extra_css in extra_css_files {
             css_files.push(std::path::PathBuf::from(extra_css));
         }
 
-        report.summary.files_scanned = css_files.len() + other_files.len();
+        report.summary.files_scanned = other_files.len();
         report.summary.css_files_scanned = css_files.len();
         report.summary.source_files_scanned = other_files.len();
+
+        if css_files.is_empty() && inline_css.is_none() {
+            report.warnings.push("No CSS files or inline CSS provided. Conversion will rely only on default Tailwind mappings (if any).".to_string());
+        }
 
         let mut css_contents = Vec::new();
         for css_path in &css_files {
