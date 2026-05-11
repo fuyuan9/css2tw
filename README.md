@@ -14,7 +14,9 @@
 - **⚡ High Performance:** Built in Rust. Utilizes parallel file processing (`rayon`) and extremely fast parsers (`lightningcss` for CSS, `oxc` for JSX/TSX).
 - **📝 Conversion Tracing:** Provides a detailed "trace" for each conversion, explaining exactly which CSS rules led to the resulting Tailwind classes.
 - **🔍 Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
+- **🧩 Template Fragment Support:** Robust parsing for fragmented template files (PHP, Blade, Jinja2, Twig, etc.). Uses a placeholder technique to protect template tags (e.g., `{{ ... }}`, `<?= ... ?>`) from being mangled or stripped during structural analysis.
 - **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via `--config-json` or `--custom-theme`.
+- **💉 Manual CSS Injection:** Provide external CSS definitions directly via CLI flags (`--css-file`, `--css-inline`), enabling conversion of isolated fragments that lack direct style references.
 
 ## Installation
 
@@ -49,7 +51,19 @@ css2tw convert ./src --config-json '{"tailwind": {"customTheme": {"primary": "#f
 css2tw convert ./src --write --confidence-threshold 0.95
 ```
 
-### 3. Fetch JSON Schema
+### 3. Support for Template Fragments (PHP, Blade, etc.)
+
+Convert isolated template fragments by injecting external CSS definitions.
+
+```bash
+# Convert a Blade component using external CSS files
+css2tw convert ./resources/views/components --css-file ./public/css/app.css --write
+
+# Quick scan with inline CSS
+css2tw scan ./templates --css-inline '.btn { padding: 1rem; }' --json
+```
+
+### 4. Fetch JSON Schema
 
 Retrieve the JSON schema for reports and configurations to ensure stable integration.
 
@@ -87,6 +101,8 @@ Analyze a repository and report convertible classes without writing any files. T
 
 - `[PATH]`: The directory to scan. Defaults to the current directory (`.`).
 - `--summary-only`: Return only the aggregate summary without individual class records.
+- `--css-file <PATH>`: Path to an external CSS file to include in the conversion logic. Can be specified multiple times.
+- `--css-inline <CSS>`: A string containing inline CSS definitions to include.
 
 #### `convert [PATH]`
 
@@ -100,6 +116,8 @@ Perform migration planning and optionally write Tailwind utility classes back to
 - `--custom-theme <KEY=VALUE>`: Inject custom theme values. Can be specified multiple times (e.g., `--custom-theme primary=#ff0000`).
 - `--config-json <JSON>`: Inject custom configuration in JSON format.
 - `--summary-only`: Return only the aggregate summary.
+- `--css-file <PATH>`: Path to an external CSS file to include. Can be specified multiple times.
+- `--css-inline <CSS>`: A string containing inline CSS definitions to include.
 
 #### `explain <SELECTOR> --css <PATH>`
 

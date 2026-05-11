@@ -50,3 +50,22 @@ If `css2tw` reports an unconverted class, the agent should:
 1. Check the `reason` field (e.g., "Complex Selector").
 2. Attempt a manual conversion or ask the user for clarification.
 3. Use `css2tw explain <selector> --css <path>` to get more details on why the engine struggled.
+
+## 5. Fragment Conversion (PHP, Blade, etc.)
+
+When working with partial template files that don't have direct CSS references, agents should locate the relevant CSS files and inject them.
+
+### Strategy for Agents:
+1. Identify the template file to be converted (e.g., `Button.blade.php`).
+2. Search the repository for relevant CSS files (e.g., `app.css`).
+3. Run `css2tw` using the `--css-file` flag to provide context.
+
+```bash
+# Agent-driven conversion of a fragment
+css2tw convert ./resources/views/partials/header.blade.php --css-file ./public/css/main.css --write --json
+```
+
+Alternatively, if the agent has already read the CSS content, it can pass it directly:
+```bash
+css2tw convert ./partial.php --css-inline ".btn { color: blue; }" --write --json
+```
