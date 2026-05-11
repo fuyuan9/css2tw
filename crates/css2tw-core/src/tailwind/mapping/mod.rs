@@ -58,9 +58,19 @@ fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
 }
 
 /// Escapes a value for use in Tailwind arbitrary values [...]
-/// Replaces spaces with underscores.
+/// Replaces spaces with underscores and removes double quotes.
 fn escape_arbitrary_value(value: &str) -> String {
-    value.replace(' ', "_")
+    value.replace(' ', "_").replace('"', "")
+}
+
+/// Formats a spacing property with proper negative value support.
+/// e.g., ("ml", "-3.75") -> "-ml-3.75"
+fn format_spacing(prop: &str, value: &str) -> String {
+    if value.starts_with('-') {
+        format!("-{}-{}", prop, &value[1..])
+    } else {
+        format!("{}-{}", prop, value)
+    }
 }
 
 /// Maps a single CSS property to its equivalent Tailwind utility class.
@@ -157,10 +167,10 @@ pub fn map_property(
             _ => None,
         },
         // Common Margin
-        Property::MarginTop(v) => length_to_tw(v, rem_scale).map(|s| format!("mt-{}", s)),
-        Property::MarginBottom(v) => length_to_tw(v, rem_scale).map(|s| format!("mb-{}", s)),
-        Property::MarginLeft(v) => length_to_tw(v, rem_scale).map(|s| format!("ml-{}", s)),
-        Property::MarginRight(v) => length_to_tw(v, rem_scale).map(|s| format!("mr-{}", s)),
+        Property::MarginTop(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("mt", &s)),
+        Property::MarginBottom(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("mb", &s)),
+        Property::MarginLeft(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("ml", &s)),
+        Property::MarginRight(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("mr", &s)),
         Property::Margin(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -172,10 +182,10 @@ pub fn map_property(
         }
 
         // Common Padding
-        Property::PaddingTop(v) => length_to_tw(v, rem_scale).map(|s| format!("pt-{}", s)),
-        Property::PaddingBottom(v) => length_to_tw(v, rem_scale).map(|s| format!("pb-{}", s)),
-        Property::PaddingLeft(v) => length_to_tw(v, rem_scale).map(|s| format!("pl-{}", s)),
-        Property::PaddingRight(v) => length_to_tw(v, rem_scale).map(|s| format!("pr-{}", s)),
+        Property::PaddingTop(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("pt", &s)),
+        Property::PaddingBottom(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("pb", &s)),
+        Property::PaddingLeft(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("pl", &s)),
+        Property::PaddingRight(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("pr", &s)),
         Property::Padding(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -362,6 +372,15 @@ pub fn map_property(
                 None
             }
         }
+        Property::BackgroundImage(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!("bg-[{}]", escape_arbitrary_value(&dest)))
+            } else {
+                None
+            }
+        }
         Property::BoxSizing(v, _) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -474,6 +493,42 @@ mod tests {
             map_property(mb, &variant, 4.0, &vars),
             Some("mb-4".to_string())
         );
+    }
+
+    #[test]
+    fn test_map_negative_spacing() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css = ".x { margin-right: -15px; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        let mr = &rules[0].declarations.declarations[0];
+        // -15px at 16px/rem and rem-scale 4.0: (-15 / 16) * 4 = -3.75
+        assert_eq!(
+            map_property(mr, &variant, 4.0, &vars),
+            Some("-mr-3.75".to_string())
+        );
+    }
+
+    #[test]
+    fn test_map_arbitrary_quotes() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css = r#".x { background-image: url("../img.svg"); }"#;
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        let bg = &rules[0].declarations.declarations[0];
+        let out = map_property(bg, &variant, 4.0, &vars).unwrap();
+        // Should have underscores instead of spaces and NO double quotes
+        assert_eq!(out, "bg-[url(../img.svg)]");
     }
 
     #[test]
