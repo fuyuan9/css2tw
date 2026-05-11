@@ -113,7 +113,6 @@ impl FragmentParser {
             let resolved = resolver.resolve_styles(element);
             let tailwind_classes = resolved.to_tailwind_string(rem_scale);
             let raw_css = resolved.get_raw_css();
-            let suggestion = resolved.get_suggestion(&tailwind_classes);
 
             if tailwind_classes.is_empty() && class_attr.is_none() && raw_css.is_none() {
                 continue;
@@ -227,25 +226,22 @@ impl FragmentParser {
                                 let final_start = orig_mat.start() + cap.start();
                                 let final_end = orig_mat.start() + cap.end();
 
-                                replacements.push(Replacement {
-                                    span: Span {
+                                replacements.push(resolved.create_replacement(
+                                    Span {
                                         start: final_start,
                                         end: final_end,
                                     },
-                                    before: original_class_string.clone(),
-                                    after: after_string,
-                                    confidence: crate::report::ConfidenceReport {
-                                        score: 1.0,
-                                        reasons: vec![crate::report::ConfidenceReason::FullMatch],
-                                    },
-                                    reasons: vec![],
-                                    trace: vec![
+                                    original_class_string.clone(),
+                                    rem_scale,
+                                    vec![
                                         "Matched fragment element with template tag protection"
                                             .to_string(),
                                     ],
-                                    raw_css,
-                                    suggestion,
-                                });
+                                ));
+                                // Fix the 'after' string to include preserved template tags
+                                if let Some(last) = replacements.last_mut() {
+                                    last.after = after_string;
+                                }
                             }
                         }
                     }
@@ -273,22 +269,19 @@ impl FragmentParser {
                             let insert_pos = orig_offset + tag_pattern.len();
                             current_search_pos = tag_end_in_protected;
 
-                            replacements.push(Replacement {
-                                span: Span {
+                            replacements.push(resolved.create_replacement(
+                                Span {
                                     start: insert_pos,
                                     end: insert_pos,
                                 },
-                                before: "".to_string(),
-                                after: format!(" class=\"{}\"", tailwind_classes),
-                                confidence: crate::report::ConfidenceReport {
-                                    score: 1.0,
-                                    reasons: vec![crate::report::ConfidenceReason::FullMatch],
-                                },
-                                reasons: vec![],
-                                trace: vec!["Inserted new class attribute in fragment".to_string()],
-                                raw_css: None,
-                                suggestion: None,
-                            });
+                                "".to_string(),
+                                rem_scale,
+                                vec!["Inserted new class attribute in fragment".to_string()],
+                            ));
+                            // Fix the 'after' string to include ' class="..."'
+                            if let Some(last) = replacements.last_mut() {
+                                last.after = format!(" class=\"{}\"", tailwind_classes);
+                            }
                             break;
                         }
                     }

@@ -95,27 +95,19 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
                                     .next()
                                 {
                                     let resolved = self.resolver.resolve_styles(el);
-                                    let new_classes = resolved.to_tailwind_string(self.rem_scale);
                                     let raw_css = resolved.get_raw_css();
-                                    let suggestion = resolved.get_suggestion(&new_classes);
+                                    let new_classes = resolved.to_tailwind_string(self.rem_scale);
 
                                     if !new_classes.is_empty() || raw_css.is_some() {
-                                        self.replacements.push(Replacement {
-                                            span: Span { start, end },
-                                            before: class_string.to_string(),
-                                            after: new_classes,
-                                            confidence: crate::report::ConfidenceReport {
-                                                score: 1.0,
-                                                reasons: vec![crate::report::ConfidenceReason::FullMatch],
-                                            },
-                                            reasons: vec![],
-                                            trace: vec![
+                                        self.replacements.push(resolved.create_replacement(
+                                            Span { start, end },
+                                            class_string.to_string(),
+                                            self.rem_scale,
+                                            vec![
                                                 "Matched JSX opening element and resolved via OXC AST"
                                                     .to_string(),
                                             ],
-                                            raw_css,
-                                            suggestion,
-                                        });
+                                        ));
                                     }
                                 }
                             }

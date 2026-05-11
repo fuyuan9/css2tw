@@ -16,7 +16,7 @@ impl<'i> ResolvedElementStyle<'i> {
     /// Converts the resolved styles into a space-separated string of Tailwind utility classes.
     /// Handles conflict resolution based on CSS specificity.
     pub fn to_tailwind_string(&self, rem_scale: f32) -> String {
-        use crate::tailwind::mapper::map_property;
+        use crate::tailwind::mapping::map_property;
         use std::collections::{HashMap, HashSet};
 
         // Group properties by category and variant to resolve conflicts (specificity)
@@ -98,6 +98,33 @@ impl<'i> ResolvedElementStyle<'i> {
             Some("No direct Tailwind mapping found for these properties. Consider arbitrary values or manual utilities.".to_string())
         } else {
             None
+        }
+    }
+
+    /// Creates a Replacement structure from the resolved styles.
+    pub fn create_replacement(
+        &self,
+        span: crate::source::class_usage::Span,
+        before: String,
+        rem_scale: f32,
+        trace: Vec<String>,
+    ) -> crate::rewrite::patch::Replacement {
+        let after = self.to_tailwind_string(rem_scale);
+        let raw_css = self.get_raw_css();
+        let suggestion = self.get_suggestion(&after);
+
+        crate::rewrite::patch::Replacement {
+            span,
+            before,
+            after,
+            confidence: crate::report::ConfidenceReport {
+                score: 1.0,
+                reasons: vec![crate::report::ConfidenceReason::FullMatch],
+            },
+            reasons: vec![],
+            trace,
+            raw_css,
+            suggestion,
         }
     }
 }

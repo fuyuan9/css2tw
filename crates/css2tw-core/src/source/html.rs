@@ -73,9 +73,8 @@ impl HtmlParser {
             let tag_name = element.value().name();
 
             let resolved = resolver.resolve_styles(element);
-            let new_classes = resolved.to_tailwind_string(rem_scale);
             let raw_css = resolved.get_raw_css();
-            let suggestion = resolved.get_suggestion(&new_classes);
+            let new_classes = resolved.to_tailwind_string(rem_scale);
 
             if new_classes.is_empty() && raw_css.is_none() {
                 continue;
@@ -97,22 +96,15 @@ impl HtmlParser {
 
                     current_search_pos = val_end;
 
-                    replacements.push(Replacement {
-                        span: Span {
+                    replacements.push(resolved.create_replacement(
+                        Span {
                             start: val_start,
                             end: val_end,
                         },
-                        before: class_string.to_string(),
-                        after: new_classes,
-                        confidence: crate::report::ConfidenceReport {
-                            score: 1.0,
-                            reasons: vec![crate::report::ConfidenceReason::FullMatch],
-                        },
-                        reasons: vec![],
-                        trace: vec!["Matched element in HTML document".to_string()],
-                        raw_css,
-                        suggestion,
-                    });
+                        class_string.to_string(),
+                        rem_scale,
+                        vec!["Matched element in HTML document".to_string()],
+                    ));
                 }
             } else if !new_classes.is_empty() {
                 // Element has styles but no class attribute. We need to insert one.
@@ -134,22 +126,19 @@ impl HtmlParser {
                         let insert_pos = tag_end;
                         current_search_pos = insert_pos;
 
-                        replacements.push(Replacement {
-                            span: Span {
+                        replacements.push(resolved.create_replacement(
+                            Span {
                                 start: insert_pos,
                                 end: insert_pos,
                             },
-                            before: "".to_string(),
-                            after: format!(" class=\"{}\"", new_classes),
-                            confidence: crate::report::ConfidenceReport {
-                                score: 1.0,
-                                reasons: vec![crate::report::ConfidenceReason::FullMatch],
-                            },
-                            reasons: vec![],
-                            trace: vec!["Injected new class attribute for element".to_string()],
-                            raw_css: None,
-                            suggestion: None,
-                        });
+                            "".to_string(),
+                            rem_scale,
+                            vec!["Injected new class attribute for element".to_string()],
+                        ));
+                        // After creating replacement, fix the 'after' string to include ' class="..."'
+                        if let Some(last) = replacements.last_mut() {
+                            last.after = format!(" class=\"{}\"", new_classes);
+                        }
                         break;
                     }
 
