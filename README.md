@@ -93,6 +93,10 @@ These options are available for all commands.
 - `--pretty`: Pretty-print JSON output (human-readable).
 - `--trace`: Include the detailed conversion trace in the output. **Disabled by default to save tokens.**
 - `--reasons`: Include specific reasons for conversion results in the output. **Disabled by default.**
+- `--include-patched`: Include the full converted source code in the JSON report.
+- `--ndjson`: Output result as a stream of JSON objects (Newline Delimited JSON). Ideal for large-scale migrations.
+- `--file-only [PATH]`: Filter detailed JSON reports to specific files (repeatable).
+- `--stdin`: Read source content from standard input (uses `stdin.html` or `--stdin-type`).
 
 ### Commands
 

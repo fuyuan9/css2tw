@@ -33,7 +33,27 @@ If an agent needs to understand why a class was mapped a certain way (or why it 
 css2tw explain .my-custom-btn --css ./src/styles.css --json
 ```
 
+### 4. Streaming Migration (NDJSON)
+For large-scale migrations where a single JSON report would exceed token or memory limits:
+
+```bash
+css2tw convert ./src --css-file ./styles.css --ndjson
+```
+Output will be streamed line-by-line:
+1. `{"type":"start", ...}`
+2. `{"type":"file", "data":{...}}`
+3. `{"type":"summary", "data":{...}}`
+
+### 5. In-Memory Processing (Stdin)
+If an agent has source code in memory and wants to convert it without touching the disk:
+
+```bash
+cat index.html | css2tw convert --stdin --stdin-type html --css-inline ".btn { color: red; }" --json --include-patched
+```
+The agent can then read the `patched_content` field from the JSON output.
+
 ## Parsing the Output
 
 The JSON schema output by the CLI matches the `Report` struct in `crates/css2tw-core/src/report/mod.rs`.
 Agents should check `summary.errors` and `summary.warnings` to determine if the run was successful.
+For unconverted classes, check the `raw_css` and `suggestion` fields to automate fallback logic.
