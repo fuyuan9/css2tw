@@ -85,9 +85,10 @@ pub fn build_rule_map<'i, 'a>(
             let _ = ToCss::to_css(selector, &mut printer);
         }
 
-        if sel_str.starts_with('.') {
-            let base = if let Some(pos) = sel_str.find(':') {
-                let (c, p) = sel_str.split_at(pos);
+        if let Some(dot_pos) = sel_str.find('.') {
+            let from_dot = &sel_str[dot_pos..];
+            let (base, _) = if let Some(colon_pos) = from_dot.find(':') {
+                let (c, p) = from_dot.split_at(colon_pos);
                 // Map CSS pseudo-classes/elements to Tailwind variants
                 match p {
                     ":hover" => variant = TailwindVariant::Hover,
@@ -108,12 +109,9 @@ pub fn build_rule_map<'i, 'a>(
                     "::marker" => variant = TailwindVariant::Marker,
                     "::selection" => variant = TailwindVariant::Selection,
                     _ if p.starts_with(":nth-child(") => {
-                        let val = p
-                            .strip_prefix(":nth-child(")
-                            .unwrap()
-                            .strip_suffix(')')
-                            .unwrap();
-                        variant = TailwindVariant::Arbitrary(format!("nth-[{}]", val));
+                        if let Some(val) = p.strip_prefix(":nth-child(").and_then(|s| s.strip_suffix(')')) {
+                            variant = TailwindVariant::Arbitrary(format!("nth-[{}]", val));
+                        }
                     }
                     _ if p.starts_with("::") => {
                         variant = TailwindVariant::Arbitrary(format!("[&{}]", p));
@@ -123,11 +121,24 @@ pub fn build_rule_map<'i, 'a>(
                     }
                     _ => {}
                 }
-                c
+                (c, Some(p))
             } else {
-                &sel_str
+                (from_dot, None)
             };
-            class_name = Some(base.strip_prefix('.').unwrap().to_string());
+
+            // base is something like ".my-class"
+            if let Some(stripped) = base.strip_prefix('.') {
+                // Ensure we don't have further dots or other chars
+                let end_pos = stripped.find(|c: char| !c.is_alphanumeric() && c != '-' && c != '_');
+                let final_name = if let Some(ep) = end_pos {
+                    &stripped[..ep]
+                } else {
+                    stripped
+                };
+                if !final_name.is_empty() {
+                    class_name = Some(final_name.to_string());
+                }
+            }
         }
 
         if let Some(name) = class_name {
@@ -165,5 +176,38 @@ mod tests {
 
         assert_eq!(vars.get("--main-color").unwrap(), "red");
         assert_eq!(vars.get("--secondary").unwrap(), "1rem");
+    }
+
+    #[test]
+    fn test_build_rule_map_robustness() {
+        let css = "
+            div { color: red; }
+            .btn:hover { color: blue; }
+            input[type='text'] { color: green; }
+            div.active:nth-child(2n) { color: yellow; }
+        ";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = ParsedStylesheet { ast: stylesheet };
+        let rules = extract_style_rules(&parsed);
+        let map = build_rule_map(&rules);
+
+        // div should be skipped (no class)
+        assert!(!map.contains_key("div"));
+
+        // .btn:hover should be present
+        assert!(map.contains_key("btn"));
+
+        // div.active:nth-child(2n) should be present as "active"
+        assert!(map.contains_key("active"));
+
+        // Test with a pseudo-class that has no closing paren but is still valid CSS (lexically)
+        // Note: StyleSheet::parse might fail on very broken CSS, so we test semantic robustness
+        let css_partial = ".broken:nth-child(2n { color: red; }";
+        if let Ok(ast) = StyleSheet::parse(css_partial, ParserOptions::default()) {
+            let parsed = ParsedStylesheet { ast };
+            let rules = extract_style_rules(&parsed);
+            let _map = build_rule_map(&rules);
+            // Should not panic
+        }
     }
 }
