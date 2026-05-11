@@ -17,6 +17,10 @@ pub struct Replacement {
     pub reasons: Vec<String>,
     /// Step-by-step trace of how this replacement was determined.
     pub trace: Vec<String>,
+    /// Raw CSS properties associated with this class.
+    pub raw_css: Option<String>,
+    /// Actionable suggestion for the user or agent.
+    pub suggestion: Option<String>,
 }
 
 /// Applies a list of replacements to a source string.

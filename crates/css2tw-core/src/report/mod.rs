@@ -40,6 +40,8 @@ pub struct ChangeFile {
     pub file: String,
     pub status: String,
     pub replacements: Vec<ReplacementReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub patched_content: Option<String>,
 }
 
 /// Details of a single class replacement.
@@ -55,6 +57,10 @@ pub struct ReplacementReport {
     /// Step-by-step trace of the conversion logic
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trace: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_css: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suggestion: Option<String>,
 }
 
 /// Detailed confidence score and reasons for a replacement.
@@ -91,6 +97,12 @@ pub struct Unconverted {
     pub reason: String,
     pub details: String,
     pub confidence: f32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub range: Option<RangeReport>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw_css: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suggestion: Option<String>,
 }
 
 #[cfg(test)]
@@ -133,7 +145,10 @@ mod tests {
                     source_selector: ".test".to_string(),
                     reasons: vec![],
                     trace: vec![],
+                    raw_css: None,
+                    suggestion: None,
                 }],
+                patched_content: None,
             }],
             unconverted: vec![],
             warnings: vec![],
