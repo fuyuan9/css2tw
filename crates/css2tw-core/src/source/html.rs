@@ -74,8 +74,10 @@ impl HtmlParser {
 
             let resolved = resolver.resolve_styles(element);
             let new_classes = resolved.to_tailwind_string(rem_scale);
+            let raw_css = resolved.get_raw_css();
+            let suggestion = resolved.get_suggestion(&new_classes);
 
-            if new_classes.is_empty() {
+            if new_classes.is_empty() && raw_css.is_none() {
                 continue;
             }
 
@@ -108,11 +110,14 @@ impl HtmlParser {
                         },
                         reasons: vec![],
                         trace: vec!["Matched element in HTML document".to_string()],
+                        raw_css,
+                        suggestion,
                     });
                 }
-            } else {
+            } else if !new_classes.is_empty() {
                 // Element has styles but no class attribute. We need to insert one.
-                let tag_pattern = format!("<{}", tag_name);
+                let tag_name_str: &str = tag_name;
+                let tag_pattern = format!("<{}", tag_name_str);
                 let mut search_start = current_search_pos;
 
                 while let Some(offset) = source.content[search_start..].find(&tag_pattern) {
@@ -142,6 +147,8 @@ impl HtmlParser {
                             },
                             reasons: vec![],
                             trace: vec!["Injected new class attribute for element".to_string()],
+                            raw_css: None,
+                            suggestion: None,
                         });
                         break;
                     }

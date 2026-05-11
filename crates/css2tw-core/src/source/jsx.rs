@@ -96,8 +96,10 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
                                 {
                                     let resolved = self.resolver.resolve_styles(el);
                                     let new_classes = resolved.to_tailwind_string(self.rem_scale);
+                                    let raw_css = resolved.get_raw_css();
+                                    let suggestion = resolved.get_suggestion(&new_classes);
 
-                                    if !new_classes.is_empty() {
+                                    if !new_classes.is_empty() || raw_css.is_some() {
                                         self.replacements.push(Replacement {
                                             span: Span { start, end },
                                             before: class_string.to_string(),
@@ -111,6 +113,8 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
                                                 "Matched JSX opening element and resolved via OXC AST"
                                                     .to_string(),
                                             ],
+                                            raw_css,
+                                            suggestion,
                                         });
                                     }
                                 }

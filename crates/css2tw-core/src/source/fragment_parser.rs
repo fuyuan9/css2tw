@@ -112,8 +112,10 @@ impl FragmentParser {
             // Resolve styles
             let resolved = resolver.resolve_styles(element);
             let tailwind_classes = resolved.to_tailwind_string(rem_scale);
+            let raw_css = resolved.get_raw_css();
+            let suggestion = resolved.get_suggestion(&tailwind_classes);
 
-            if tailwind_classes.is_empty() && class_attr.is_none() {
+            if tailwind_classes.is_empty() && class_attr.is_none() && raw_css.is_none() {
                 continue;
             }
 
@@ -241,6 +243,8 @@ impl FragmentParser {
                                         "Matched fragment element with template tag protection"
                                             .to_string(),
                                     ],
+                                    raw_css,
+                                    suggestion,
                                 });
                             }
                         }
@@ -282,6 +286,8 @@ impl FragmentParser {
                                 },
                                 reasons: vec![],
                                 trace: vec!["Inserted new class attribute in fragment".to_string()],
+                                raw_css: None,
+                                suggestion: None,
                             });
                             break;
                         }
