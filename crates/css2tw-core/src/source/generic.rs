@@ -12,25 +12,29 @@ pub struct GenericRegexParser;
 impl ClassUsageParser for GenericRegexParser {
     fn extract_classes(&self, source: &SourceFile) -> Result<Vec<ClassUsage>, Css2TwError> {
         let mut classes = Vec::new();
-        // Matches class="..." or className="..." with single or double quotes.
-        // The regex uses a case-insensitive boundary search to avoid matching subwords.
+        // Robust regex for class/className attributes, handling multiline and varied whitespace
         let re = Regex::new(r#"(?i)\b(?:class|className)\s*=\s*(?:"([^"]*)"|'([^']*)')"#).unwrap();
 
         for cap in re.captures_iter(&source.content) {
-            // Get the content of the attribute (group 1 or group 2 depending on quote type)
             let match_val = cap.get(1).or_else(|| cap.get(2));
 
             if let Some(match_val) = match_val {
                 let attr_content_start = match_val.start();
                 let class_string = match_val.as_str();
 
-                // Track position within the attribute value
                 let mut current_offset = 0;
 
                 for part in class_string.split_whitespace() {
+                    // Skip parts that look like template tags
+                    if part.contains("{{")
+                        || part.contains("{%")
+                        || part.contains("<%")
+                        || part.contains("@")
+                    {
+                        continue;
+                    }
+
                     let part_len = part.len();
-                    // Find the start of this specific class name within the attribute string
-                    // We search from current_offset to handle duplicate class names in the same attribute
                     if let Some(relative_start) = class_string[current_offset..].find(part) {
                         let absolute_start = attr_content_start + current_offset + relative_start;
                         let absolute_end = absolute_start + part_len;
@@ -43,7 +47,6 @@ impl ClassUsageParser for GenericRegexParser {
                             },
                         });
 
-                        // Advance current_offset for the next search
                         current_offset += relative_start + part_len;
                     }
                 }

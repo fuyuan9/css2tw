@@ -1,12 +1,12 @@
 use crate::config::{Config, ParserType};
 use crate::css::parser::{build_rule_map, extract_style_rules, parse_css};
 use crate::error::Css2TwError;
-use crate::rewrite::patch::apply_patches;
+use crate::rewrite::patch::{apply_patches, Replacement};
 use crate::rewrite::planner::ConversionPlanner;
 use crate::source::generic::GenericRegexParser;
 use crate::source::html::HtmlParser;
 use crate::source::jsx::JsxParser;
-use crate::source::{ClassUsageParser, SourceFile};
+use crate::source::{fragment_parser::FragmentParser, ClassUsageParser, SourceFile};
 use std::collections::HashMap;
 
 /// The main entry point for CSS to Tailwind conversion.
@@ -31,6 +31,16 @@ impl Converter {
         source: &SourceFile,
         css_contents: &[String],
     ) -> Result<String, Css2TwError> {
+        let replacements = self.plan_file(source, css_contents)?;
+        Ok(apply_patches(&source.content, &replacements))
+    }
+
+    /// Plans the conversion of a single source file and returns the list of replacements.
+    pub fn plan_file(
+        &self,
+        source: &SourceFile,
+        css_contents: &[String],
+    ) -> Result<Vec<Replacement>, Css2TwError> {
         let mut stylesheets = Vec::new();
         for content in css_contents {
             if let Ok(stylesheet) = parse_css(content) {
@@ -83,6 +93,16 @@ impl Converter {
                     .plan_jsx(source, &rules, self.config.tailwind.rem_scale)
                     .unwrap_or_default()
             }
+            ParserType::Fragment => {
+                let fragment_parser = FragmentParser;
+                let rules = stylesheets
+                    .iter()
+                    .flat_map(|s| extract_style_rules(s))
+                    .collect::<Vec<_>>();
+                fragment_parser
+                    .plan_fragment(source, &rules, self.config.tailwind.rem_scale)
+                    .unwrap_or_default()
+            }
             ParserType::Generic => {
                 let generic_parser = GenericRegexParser;
                 let classes = generic_parser.extract_classes(source).unwrap_or_default();
@@ -97,7 +117,7 @@ impl Converter {
             }
         };
 
-        Ok(apply_patches(&source.content, &replacements))
+        Ok(replacements)
     }
 }
 

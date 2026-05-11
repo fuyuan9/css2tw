@@ -27,11 +27,36 @@ fn default_threshold() -> f32 {
 
 fn default_parsers() -> std::collections::HashMap<String, ParserType> {
     let mut m = std::collections::HashMap::new();
+    // HTML parser
     m.insert("html".to_string(), ParserType::Html);
+    // JSX / TS parsers
     m.insert("js".to_string(), ParserType::Jsx);
     m.insert("jsx".to_string(), ParserType::Jsx);
     m.insert("ts".to_string(), ParserType::Jsx);
     m.insert("tsx".to_string(), ParserType::Jsx);
+    // Fragment parsers for various template engines
+    let fragment_exts = [
+        "php",
+        "phtml",
+        "blade.php",
+        "jinja",
+        "j2",
+        "djhtml",
+        "erb",
+        "html.erb",
+        "hbs",
+        "handlebars",
+        "mustache",
+        "gohtml",
+        "tmpl",
+        "cshtml",
+        "vue",
+        "svelte",
+        "lit",
+    ];
+    for ext in fragment_exts.iter() {
+        m.insert(ext.to_string(), ParserType::Fragment);
+    }
     m
 }
 
@@ -42,6 +67,7 @@ pub enum ParserType {
     Html,
     Jsx,
     Generic,
+    Fragment, // Handles any template fragment (HTML, Blade, Jinja, etc.)
 }
 
 /// Configuration for Tailwind CSS generation and theme matching.

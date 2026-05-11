@@ -4,6 +4,7 @@
 //! read them, and parse them to find where CSS classes are used.
 
 pub mod class_usage;
+pub mod fragment_parser;
 pub mod generic;
 pub mod html;
 pub mod jsx;
