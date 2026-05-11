@@ -146,16 +146,11 @@ impl FragmentParser {
                         &protected_content[match_start_in_protected..match_end_in_protected],
                     ) {
                         let cap = val_mat.get(1).or_else(|| val_mat.get(2)).unwrap();
-                        let _val_start_in_protected = match_start_in_protected + cap.start();
                         let val_end_in_protected = match_start_in_protected + cap.end();
 
                         current_search_pos = val_end_in_protected;
 
-                        // Now we need to map this back to the ORIGINAL content
-                        // Since placeholders might have different lengths than original tags,
-                        // we need to be careful.
-
-                        // Let's reconstruct the "after" string by keeping unknown classes and template tags
+                        // Reconstruct the "after" string by keeping unknown classes and template tags
                         let mut final_parts = Vec::new();
                         if !tailwind_classes.is_empty() {
                             final_parts.push(tailwind_classes);
@@ -170,12 +165,7 @@ impl FragmentParser {
                                     }
                                 }
                             } else {
-                                // If it's a regular class, we only keep it if it wasn't converted.
-                                // In this simplified structural parser, we assume any class that matched
-                                // a CSS rule is now represented in tailwind_classes.
-                                // However, we don't know which ones those are.
-                                // For safety in fragments, let's keep all original classes that were NOT in the CSS.
-                                // (This is a bit redundant but safer).
+                                // Keep all original classes that were NOT in the CSS
                                 let was_matched = style_rules.iter().any(|r| {
                                     r.selectors.0.iter().any(|s| {
                                         s.iter().any(|comp| match comp {
@@ -197,13 +187,7 @@ impl FragmentParser {
                             continue;
                         }
 
-                        // We need the original span. This is the hardest part.
-                        // For now, let's just use the position found in the original source
-                        // by searching for the reconstructed class_string.
-                        // (Wait, the class_string in scraper ALREADY has placeholders).
-
-                        // Let's find the original class string in the original source.
-                        // We can reconstruct what the class string looked like in original source.
+                        // Reconstruct original class string for searching in original source
                         let mut original_class_string = class_string.to_string();
                         for (i, original) in placeholders.iter().enumerate() {
                             let placeholder = format!("___CSS2TW_TPL_{}___", i);
@@ -231,22 +215,18 @@ impl FragmentParser {
                                 let final_start = orig_mat.start() + cap.start();
                                 let final_end = orig_mat.start() + cap.end();
 
-                                replacements.push(resolved.create_replacement(
+                                let mut rep = resolved.create_replacement(
                                     Span {
                                         start: final_start,
                                         end: final_end,
                                     },
                                     original_class_string.clone(),
                                     rem_scale,
-                                    vec![
-                                        "Matched fragment element with template tag protection"
-                                            .to_string(),
-                                    ],
-                                ));
-                                // Fix the 'after' string to include preserved template tags
-                                if let Some(last) = replacements.last_mut() {
-                                    last.after = after_string;
-                                }
+                                    vec!["Matched fragment element with template tag protection"
+                                        .to_string()],
+                                );
+                                rep.after = after_string;
+                                replacements.push(rep);
                             }
                         }
                     }
@@ -274,19 +254,19 @@ impl FragmentParser {
                             let insert_pos = orig_offset + tag_pattern.len();
                             current_search_pos = tag_end_in_protected;
 
-                            replacements.push(resolved.create_replacement(
-                                Span {
-                                    start: insert_pos,
-                                    end: insert_pos,
-                                },
-                                "".to_string(),
-                                rem_scale,
-                                vec!["Inserted new class attribute in fragment".to_string()],
-                            ));
-                            // Fix the 'after' string to include ' class="..."'
-                            if let Some(last) = replacements.last_mut() {
-                                last.after = format!(" class=\"{}\"", tailwind_classes);
-                            }
+                            replacements.push({
+                                let mut rep = resolved.create_replacement(
+                                    Span {
+                                        start: insert_pos,
+                                        end: insert_pos,
+                                    },
+                                    "".to_string(),
+                                    rem_scale,
+                                    vec!["Inserted new class attribute in fragment".to_string()],
+                                );
+                                rep.after = format!(" class=\"{}\"", tailwind_classes);
+                                rep
+                            });
                             break;
                         }
                     }

@@ -137,7 +137,7 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
                 let new_classes = resolved.to_tailwind_string(self.rem_scale);
                 if !new_classes.is_empty() {
                     let insert_pos = elem.name.span().end as usize;
-                    self.replacements.push(resolved.create_replacement(
+                    let mut rep = resolved.create_replacement(
                         Span {
                             start: insert_pos,
                             end: insert_pos,
@@ -145,10 +145,9 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
                         "".to_string(),
                         self.rem_scale,
                         vec!["Injected new className for JSX element".to_string()],
-                    ));
-                    if let Some(last) = self.replacements.last_mut() {
-                        last.after = format!(" className=\"{}\"", new_classes);
-                    }
+                    );
+                    rep.after = format!(" className=\"{}\"", new_classes);
+                    self.replacements.push(rep);
                 }
             }
         }

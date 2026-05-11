@@ -71,7 +71,6 @@ impl HtmlParser {
 
         for element in elements {
             let class_attr = element.value().attr("class");
-            let tag_name = element.value().name();
 
             let resolved = resolver.resolve_styles(element);
             let raw_css = resolved.get_raw_css();
@@ -96,7 +95,11 @@ impl HtmlParser {
 
                 if let Some(offset) = found_pos {
                     let start_in_source = current_search_pos + offset;
-                    let val_start = start_in_source + 7; // length of 'class="'
+                    let val_start = if source.content[start_in_source..].starts_with("class=\"") {
+                        start_in_source + 7
+                    } else {
+                        start_in_source + 7 // length of 'class='
+                    };
                     let val_end = val_start + class_string.len();
 
                     current_search_pos = val_end;
@@ -113,15 +116,14 @@ impl HtmlParser {
                 }
             } else if !new_classes.is_empty() {
                 // Element has styles but no class attribute. We need to insert one.
-                let tag_name_str: &str = tag_name;
-                let tag_pattern = format!("<{}", tag_name_str);
+                let tag_pattern = format!("<{}", element.value().name());
                 let mut search_start = current_search_pos;
 
                 while let Some(offset) = source.content[search_start..].find(&tag_pattern) {
                     let tag_start = search_start + offset;
                     let tag_end = tag_start + tag_pattern.len();
 
-                    // Verify it's a complete tag name (followed by space, >, or /)
+                    // Verify it's a complete tag name
                     let is_valid_tag = source.content[tag_end..]
                         .chars()
                         .next()
@@ -131,7 +133,7 @@ impl HtmlParser {
                         let insert_pos = tag_end;
                         current_search_pos = insert_pos;
 
-                        replacements.push(resolved.create_replacement(
+                        let mut rep = resolved.create_replacement(
                             Span {
                                 start: insert_pos,
                                 end: insert_pos,
@@ -139,15 +141,11 @@ impl HtmlParser {
                             "".to_string(),
                             rem_scale,
                             vec!["Injected new class attribute for element".to_string()],
-                        ));
-                        // After creating replacement, fix the 'after' string to include ' class="..."'
-                        if let Some(last) = replacements.last_mut() {
-                            last.after = format!(" class=\"{}\"", new_classes);
-                        }
+                        );
+                        rep.after = format!(" class=\"{}\"", new_classes);
+                        replacements.push(rep);
                         break;
                     }
-
-                    // Move past this partial match
                     search_start = tag_end;
                 }
             }

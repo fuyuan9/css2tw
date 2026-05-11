@@ -3,6 +3,14 @@ use crate::tailwind::variant::TailwindVariant;
 use lightningcss::rules::style::StyleRule;
 use scraper::{ElementRef, Selector};
 
+/// Diagnostics for style resolution, explaining why things were matched or skipped.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub struct StyleDiagnostics {
+    pub matched_selectors: Vec<String>,
+    pub unmapped_properties: Vec<String>,
+    pub skipped_rules: Vec<String>,
+}
+
 /// Represents the resolved styles for a specific HTML element.
 #[derive(Debug, Clone)]
 pub struct ResolvedElementStyle<'i> {
@@ -10,6 +18,8 @@ pub struct ResolvedElementStyle<'i> {
     pub properties: Vec<TailwindMapping<'i>>,
     /// Map of CSS variables applicable to this element.
     pub variable_map: std::collections::HashMap<String, String>,
+    /// Diagnostics for this resolution.
+    pub diagnostics: StyleDiagnostics,
 }
 
 impl<'i> ResolvedElementStyle<'i> {
@@ -107,11 +117,25 @@ impl<'i> ResolvedElementStyle<'i> {
         span: crate::source::class_usage::Span,
         before: String,
         rem_scale: f32,
-        trace: Vec<String>,
+        mut trace: Vec<String>,
     ) -> crate::rewrite::patch::Replacement {
         let after = self.to_tailwind_string(rem_scale);
         let raw_css = self.get_raw_css();
         let suggestion = self.get_suggestion(&after);
+
+        // Add diagnostics to trace
+        if !self.diagnostics.matched_selectors.is_empty() {
+            trace.push(format!(
+                "Matched selectors: {}",
+                self.diagnostics.matched_selectors.join(", ")
+            ));
+        }
+        if !self.diagnostics.unmapped_properties.is_empty() {
+            trace.push(format!(
+                "Unmapped properties: {}",
+                self.diagnostics.unmapped_properties.join(", ")
+            ));
+        }
 
         crate::rewrite::patch::Replacement {
             span,
@@ -150,36 +174,41 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
     /// Resolves all applicable styles for a given element.
     pub fn resolve_styles(&self, element: ElementRef) -> ResolvedElementStyle<'i> {
         let mut resolved_props: Vec<TailwindMapping> = Vec::new();
+        let mut matched_selectors = Vec::new();
+        let mut skipped_rules = Vec::new();
 
         for rule in self.style_rules {
             for selector in &rule.selectors.0 {
-                // Convert lightningcss selector to string for scraper
                 let mut sel_str = String::new();
                 let mut printer = lightningcss::printer::Printer::new(
                     &mut sel_str,
                     lightningcss::printer::PrinterOptions::default(),
                 );
                 if lightningcss::traits::ToCss::to_css(selector, &mut printer).is_ok() {
-                    // Note: scraper doesn't support pseudo-elements in selectors for matching against elements
-                    // We need to handle pseudo-elements separately.
-
                     let clean_sel_str = self.clean_selector(selector);
+                    let scraper_sel_res = Selector::parse(&clean_sel_str);
 
-                    let scraper_sel = Selector::parse(&clean_sel_str);
-                    if let Ok(scraper_sel) = scraper_sel {
-                        if scraper_sel.matches(&element) {
-                            // Determine variant from original selector
-                            let variant = self.extract_variant(selector);
-                            let specificity = selector.specificity();
+                    match scraper_sel_res {
+                        Ok(scraper_sel) => {
+                            if scraper_sel.matches(&element) {
+                                matched_selectors.push(sel_str.clone());
+                                let variant = self.extract_variant(selector);
+                                let specificity = selector.specificity();
 
-                            for prop in &rule.declarations.declarations {
-                                let m = TailwindMapping {
-                                    property: prop.clone(),
-                                    variant: variant.clone(),
-                                    specificity,
-                                };
-                                resolved_props.push(m);
+                                for prop in &rule.declarations.declarations {
+                                    resolved_props.push(TailwindMapping {
+                                        property: prop.clone(),
+                                        variant: variant.clone(),
+                                        specificity,
+                                    });
+                                }
                             }
+                        }
+                        Err(e) => {
+                            skipped_rules.push(format!(
+                                "Failed to parse selector '{}' for matching: {:?}",
+                                clean_sel_str, e
+                            ));
                         }
                     }
                 }
@@ -189,6 +218,11 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
         ResolvedElementStyle {
             properties: resolved_props,
             variable_map: self.variable_map.clone(),
+            diagnostics: StyleDiagnostics {
+                matched_selectors,
+                unmapped_properties: Vec::new(), // Populated during mapping if needed
+                skipped_rules,
+            },
         }
     }
 
@@ -257,12 +291,12 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                     ":nth-child(odd)" | ":nth-child(2n+1)" => variant = TailwindVariant::Odd,
                     ":nth-child(even)" | ":nth-child(2n)" => variant = TailwindVariant::Even,
                     s if s.starts_with(":nth-child(") => {
-                        let val = s
+                        if let Some(val) = s
                             .strip_prefix(":nth-child(")
-                            .unwrap()
-                            .strip_suffix(')')
-                            .unwrap();
-                        variant = TailwindVariant::Arbitrary(format!("nth-[{}]", val));
+                            .and_then(|rem| rem.strip_suffix(')'))
+                        {
+                            variant = TailwindVariant::Arbitrary(format!("nth-[{}]", val));
+                        }
                     }
                     "::before" | ":before" => variant = TailwindVariant::Before,
                     "::after" | ":after" => variant = TailwindVariant::After,
@@ -270,12 +304,14 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                     "::marker" => variant = TailwindVariant::Marker,
                     "::selection" => variant = TailwindVariant::Selection,
                     s if s.starts_with("::") => {
-                        let val = s.strip_prefix("::").unwrap();
-                        variant = TailwindVariant::Arbitrary(format!("[&::{}]", val));
+                        if let Some(val) = s.strip_prefix("::") {
+                            variant = TailwindVariant::Arbitrary(format!("[&::{}]", val));
+                        }
                     }
                     s if s.starts_with(':') && !s.starts_with("::") => {
-                        let val = s.strip_prefix(':').unwrap();
-                        variant = TailwindVariant::Arbitrary(format!("[&:{}]", val));
+                        if let Some(val) = s.strip_prefix(':') {
+                            variant = TailwindVariant::Arbitrary(format!("[&:{}]", val));
+                        }
                     }
                     _ => {}
                 }

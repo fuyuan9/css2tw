@@ -44,6 +44,11 @@ impl ConversionPlanner {
         let resolved = crate::css::resolver::ResolvedElementStyle {
             properties: mappings.clone(),
             variable_map: variable_map.clone(),
+            diagnostics: crate::css::resolver::StyleDiagnostics {
+                matched_selectors: vec![format!(".{}", class_name)],
+                unmapped_properties: Vec::new(),
+                skipped_rules: Vec::new(),
+            },
         };
         let new_classes = resolved.to_tailwind_string(rem_scale);
 

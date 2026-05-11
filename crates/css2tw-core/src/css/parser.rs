@@ -78,6 +78,9 @@ pub fn build_rule_map<'i, 'a>(
         let mut variant = TailwindVariant::default();
 
         // Currently we only support single-selector rules for simplicity
+        if rule.selectors.0.is_empty() {
+            continue;
+        }
         let selector = &rule.selectors.0[0];
         let mut sel_str = String::new();
         {
@@ -117,10 +120,14 @@ pub fn build_rule_map<'i, 'a>(
                         }
                     }
                     _ if p.starts_with("::") => {
-                        variant = TailwindVariant::Arbitrary(format!("[&{}]", p));
+                        if let Some(stripped) = p.strip_prefix("::") {
+                            variant = TailwindVariant::Arbitrary(format!("[&::{}]", stripped));
+                        }
                     }
                     _ if p.starts_with(':') => {
-                        variant = TailwindVariant::Arbitrary(format!("[&{}]", p));
+                        if let Some(stripped) = p.strip_prefix(':') {
+                            variant = TailwindVariant::Arbitrary(format!("[&:{}]", stripped));
+                        }
                     }
                     _ => {}
                 }
