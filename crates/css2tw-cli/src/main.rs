@@ -292,6 +292,7 @@ fn process_migration(
         cfg
     };
 
+    // Override config with explicit CLI flags if provided
     if cli.trace {
         resolved_config.agent.include_trace = true;
     }
@@ -300,6 +301,9 @@ fn process_migration(
     }
     if cli.pretty {
         resolved_config.agent.compact = false;
+    }
+    if cli.json {
+        // In AI-first CLI, --json defaults to compact unless --pretty is specified
     }
 
     let is_dry_run = mode != "write";

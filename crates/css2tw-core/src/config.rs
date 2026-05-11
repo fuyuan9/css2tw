@@ -118,7 +118,6 @@ impl Default for RewriteConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentConfig {
-    pub json_only: bool,
     pub deterministic: bool,
     #[serde(default = "default_true")]
     pub compact: bool,
@@ -131,7 +130,6 @@ pub struct AgentConfig {
 impl Default for AgentConfig {
     fn default() -> Self {
         Self {
-            json_only: true,
             deterministic: true,
             compact: true,
             include_trace: false,
@@ -168,7 +166,6 @@ impl Default for Config {
                 sort_tailwind_classes: true,
             },
             agent: AgentConfig {
-                json_only: true,
                 deterministic: true,
                 compact: true,
                 include_trace: false,
@@ -205,7 +202,6 @@ mod tests {
                 "sortTailwindClasses": true
             },
             "agent": {
-                "jsonOnly": true,
                 "deterministic": true
             }
         }"##;
@@ -222,7 +218,6 @@ mod tests {
     fn test_agent_config_defaults() {
         let json = r##"{
             "agent": {
-                "jsonOnly": true,
                 "deterministic": true
             }
         }"##;
