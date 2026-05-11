@@ -28,7 +28,7 @@ The agent should use this schema to validate its internal parsing logic.
 
 ## 3. Explainability & User Feedback
 
-When an agent suggests a conversion, it should use the `trace` field in the JSON report to explain *why* it made that choice.
+When an agent suggests a conversion, it should use the `trace` field in the JSON report to explain *why* it made that choice. **Note: The `--trace` flag must be explicitly passed to include this field.**
 
 **Example Trace Output:**
 ```json

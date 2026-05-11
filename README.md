@@ -88,11 +88,11 @@ These options are available for all commands.
 
 - `-V, --version`: Print version information.
 - `-h, --help`: Print help information.
-- `--json`: Output results in structured JSON format.
-- `--no-color`: Disable ANSI color codes in output.
-- `--compact`: Minify JSON output (useful for reducing token count in AI agent workflows).
-- `--no-trace`: Omit the detailed conversion trace from the output.
-- `--no-reasons`: Omit the specific reasons for conversion results from the output.
+- `--json`: Output results in structured JSON format. **Minified by default for AI efficiency.**
+- `--color`: Enable ANSI color codes in output. **Disabled by default.**
+- `--pretty`: Pretty-print JSON output (human-readable).
+- `--trace`: Include the detailed conversion trace in the output. **Disabled by default to save tokens.**
+- `--reasons`: Include specific reasons for conversion results in the output. **Disabled by default.**
 
 ### Commands
 

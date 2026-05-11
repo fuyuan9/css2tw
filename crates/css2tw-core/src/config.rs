@@ -120,11 +120,11 @@ impl Default for RewriteConfig {
 pub struct AgentConfig {
     pub json_only: bool,
     pub deterministic: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub compact: bool,
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub include_trace: bool,
-    #[serde(default = "default_true")]
+    #[serde(default)]
     pub include_reasons: bool,
 }
 
@@ -133,9 +133,9 @@ impl Default for AgentConfig {
         Self {
             json_only: true,
             deterministic: true,
-            compact: false,
-            include_trace: true,
-            include_reasons: true,
+            compact: true,
+            include_trace: false,
+            include_reasons: false,
         }
     }
 }
@@ -170,9 +170,9 @@ impl Default for Config {
             agent: AgentConfig {
                 json_only: true,
                 deterministic: true,
-                compact: false,
-                include_trace: true,
-                include_reasons: true,
+                compact: true,
+                include_trace: false,
+                include_reasons: false,
             },
             parsers: default_parsers(),
         }
@@ -227,8 +227,8 @@ mod tests {
             }
         }"##;
         let config: Config = serde_json::from_str(json).unwrap();
-        assert!(config.agent.include_trace);
-        assert!(config.agent.include_reasons);
-        assert!(!config.agent.compact);
+        assert!(!config.agent.include_trace);
+        assert!(!config.agent.include_reasons);
+        assert!(config.agent.compact);
     }
 }

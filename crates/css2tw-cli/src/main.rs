@@ -19,21 +19,21 @@ struct Cli {
     #[arg(long, global = true)]
     json: bool,
 
-    /// Disable color output
+    /// Enable color output
     #[arg(long, global = true)]
-    no_color: bool,
+    color: bool,
 
-    /// Minify JSON output
+    /// Include conversion trace in output
     #[arg(long, global = true)]
-    compact: bool,
+    trace: bool,
 
-    /// Omit conversion trace from output
+    /// Include conversion reasons in output
     #[arg(long, global = true)]
-    no_trace: bool,
+    reasons: bool,
 
-    /// Omit conversion reasons from output
+    /// Pretty-print JSON output
     #[arg(long, global = true)]
-    no_reasons: bool,
+    pretty: bool,
 }
 
 #[derive(Subcommand)]
@@ -104,7 +104,7 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    if cli.no_color {
+    if !cli.color {
         control::set_override(false);
     }
 
@@ -191,10 +191,10 @@ fn main() -> anyhow::Result<()> {
                         "reason": "Selector not found or no tailwind mappings available"
                     })
                 };
-                if cli.compact {
-                    println!("{}", serde_json::to_string(&result)?);
-                } else {
+                if cli.pretty {
                     println!("{}", serde_json::to_string_pretty(&result)?);
+                } else {
+                    println!("{}", serde_json::to_string(&result)?);
                 }
             } else {
                 match explanation {
@@ -215,7 +215,11 @@ fn main() -> anyhow::Result<()> {
         Commands::Config => {
             let config = Config::default();
             if cli.json {
-                println!("{}", serde_json::to_string_pretty(&config)?);
+                if cli.pretty {
+                    println!("{}", serde_json::to_string_pretty(&config)?);
+                } else {
+                    println!("{}", serde_json::to_string(&config)?);
+                }
             } else {
                 println!("{:#?}", config);
             }
@@ -229,7 +233,11 @@ fn main() -> anyhow::Result<()> {
                 "config": config_schema
             });
 
-            println!("{}", serde_json::to_string_pretty(&combined)?);
+            if cli.pretty {
+                println!("{}", serde_json::to_string_pretty(&combined)?);
+            } else {
+                println!("{}", serde_json::to_string(&combined)?);
+            }
         }
     }
 
@@ -264,14 +272,14 @@ fn process_migration(
         cfg
     };
 
-    if cli.no_trace {
-        resolved_config.agent.include_trace = false;
+    if cli.trace {
+        resolved_config.agent.include_trace = true;
     }
-    if cli.no_reasons {
-        resolved_config.agent.include_reasons = false;
+    if cli.reasons {
+        resolved_config.agent.include_reasons = true;
     }
-    if cli.compact {
-        resolved_config.agent.compact = true;
+    if cli.pretty {
+        resolved_config.agent.compact = false;
     }
 
     let is_dry_run = mode != "write";
@@ -455,10 +463,10 @@ fn process_migration(
 
 /// Formats and prints the final JSON report according to CLI flags.
 fn print_report(report: &css2tw_core::report::Report, cli: &Cli) -> anyhow::Result<()> {
-    if cli.compact {
-        println!("{}", serde_json::to_string(report)?);
-    } else {
+    if cli.pretty {
         println!("{}", serde_json::to_string_pretty(report)?);
+    } else {
+        println!("{}", serde_json::to_string(report)?);
     }
     Ok(())
 }

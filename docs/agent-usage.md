@@ -4,7 +4,7 @@ This tool is designed to be highly interoperable with AI agents for automated co
 
 ## Core Tenets
 
-1. **Deterministic JSON Output:** Always use the `--json` flag to receive structured output instead of human-readable logs.
+1. **Deterministic & Minimal JSON Output:** Always use the `--json` flag. Output is minified and omits `trace` and `reasons` fields by default to optimize token consumption in AI agent workflows. Use `--trace` or `--reasons` only when deep reasoning is required.
 2. **Read-Only by Default:** The tool operates in dry-run mode unless the `--write` flag is explicitly passed.
 3. **Confidence Scoring:** `css2tw` calculates a confidence score (0.0 to 1.0) for every conversion. By default, agents should verify high-confidence conversions and request user confirmation for low-confidence ones.
 
