@@ -47,16 +47,33 @@ impl ConversionPlanner {
         };
         let new_classes = resolved.to_tailwind_string(rem_scale);
 
-        if new_classes.is_empty() {
-            return None;
-        }
-
         let mut trace = Vec::new();
         trace.push(format!(
             "Found {} mappings for class .{}",
             mappings.len(),
             class_name
         ));
+        
+        let mut raw_css_parts = Vec::new();
+        for mapping in mappings {
+            let mut dest = String::new();
+            {
+                let mut printer = lightningcss::printer::Printer::new(
+                    &mut dest,
+                    lightningcss::printer::PrinterOptions::default(),
+                );
+                let _ = mapping.property.to_css(&mut printer, false);
+            }
+            if !dest.is_empty() {
+                raw_css_parts.push(dest);
+            }
+        }
+        let raw_css = if raw_css_parts.is_empty() {
+            None
+        } else {
+            Some(raw_css_parts.join("; "))
+        };
+
         trace.push(format!("Resolved Tailwind utility: {}", new_classes));
 
         let mut confidence_reasons = vec![crate::report::ConfidenceReason::FullMatch];
@@ -78,6 +95,14 @@ impl ConversionPlanner {
             }
         }
 
+        let suggestion = if new_classes.is_empty() {
+            Some("No direct Tailwind mapping found. Consider manual utility application or arbitrary values.".to_string())
+        } else if score < 0.8 {
+             Some("Review variables or complex properties for accuracy.".to_string())
+        } else {
+            None
+        };
+
         Some(Replacement {
             span: crate::source::class_usage::Span { start: 0, end: 0 },
             before: class_name.to_string(),
@@ -88,6 +113,8 @@ impl ConversionPlanner {
             },
             reasons: vec![],
             trace,
+            raw_css,
+            suggestion,
         })
     }
 }

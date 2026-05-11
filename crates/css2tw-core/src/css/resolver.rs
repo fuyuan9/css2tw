@@ -69,6 +69,37 @@ impl<'i> ResolvedElementStyle<'i> {
         unique.sort();
         unique.join(" ")
     }
+
+    /// Gets the raw CSS declarations for this style.
+    pub fn get_raw_css(&self) -> Option<String> {
+        let mut parts = Vec::new();
+        for mapping in &self.properties {
+            let mut dest = String::new();
+            let mut printer = lightningcss::printer::Printer::new(
+                &mut dest,
+                lightningcss::printer::PrinterOptions::default(),
+            );
+            if mapping.property.to_css(&mut printer, false).is_ok() {
+                if !dest.is_empty() {
+                    parts.push(dest);
+                }
+            }
+        }
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join("; "))
+        }
+    }
+
+    /// Generates suggestions for unmapped properties.
+    pub fn get_suggestion(&self, tailwind_classes: &str) -> Option<String> {
+        if tailwind_classes.is_empty() && !self.properties.is_empty() {
+            Some("No direct Tailwind mapping found for these properties. Consider arbitrary values or manual utilities.".to_string())
+        } else {
+            None
+        }
+    }
 }
 
 /// Resolves CSS rules against HTML elements to determine which styles apply.
