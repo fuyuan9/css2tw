@@ -46,6 +46,12 @@ enum Commands {
         /// Return only the summary
         #[arg(long)]
         summary_only: bool,
+        /// Additional CSS file to use for conversion
+        #[arg(long)]
+        css_file: Vec<String>,
+        /// Inline CSS string to use for conversion
+        #[arg(long)]
+        css_inline: Option<String>,
     },
     /// Perform migration planning and optionally write changes
     Convert {
@@ -73,6 +79,12 @@ enum Commands {
         /// Return only the summary
         #[arg(long)]
         summary_only: bool,
+        /// Additional CSS file to use for conversion (can be used multiple times)
+        #[arg(long)]
+        css_file: Vec<String>,
+        /// Inline CSS string to use for conversion
+        #[arg(long)]
+        css_inline: Option<String>,
     },
     /// Explain how a CSS class would be converted
     Explain {
@@ -97,7 +109,12 @@ fn main() -> anyhow::Result<()> {
     }
 
     match &cli.command {
-        Commands::Scan { path, summary_only } => {
+        Commands::Scan {
+            path,
+            summary_only,
+            css_file,
+            css_inline,
+        } => {
             process_migration(
                 path,
                 "read_only",
@@ -106,6 +123,8 @@ fn main() -> anyhow::Result<()> {
                 &[],
                 None,
                 *summary_only,
+                css_file,
+                css_inline.as_ref(),
                 &cli,
             )?;
         }
@@ -118,6 +137,8 @@ fn main() -> anyhow::Result<()> {
             custom_theme,
             config_json,
             summary_only,
+            css_file,
+            css_inline,
         } => {
             let mode = if *write && !*dry_run {
                 "write"
@@ -132,6 +153,8 @@ fn main() -> anyhow::Result<()> {
                 custom_theme,
                 config_json.as_ref(),
                 *summary_only,
+                css_file,
+                css_inline.as_ref(),
                 &cli,
             )?;
         }
@@ -213,7 +236,6 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Core logic for executing the migration process (scan, dry-run, or write).
 fn process_migration(
     path: &str,
     mode: &str,
@@ -222,6 +244,8 @@ fn process_migration(
     custom_theme: &[String],
     config_json: Option<&String>,
     summary_only: bool,
+    extra_css_files: &[String],
+    inline_css: Option<&String>,
     cli: &Cli,
 ) -> anyhow::Result<()> {
     let mut resolved_config = if let Some(json) = config_json {
@@ -281,9 +305,14 @@ fn process_migration(
     };
 
     if let Ok(files) = css2tw_core::source::Scanner::scan_directory(path) {
-        let (css_files, other_files): (Vec<_>, Vec<_>) = files
+        let (mut css_files, other_files): (Vec<_>, Vec<_>) = files
             .into_iter()
             .partition(|p| p.extension().and_then(|s| s.to_str()) == Some("css"));
+
+        // Add extra CSS files from CLI
+        for extra_css in extra_css_files {
+            css_files.push(std::path::PathBuf::from(extra_css));
+        }
 
         report.summary.files_scanned = css_files.len() + other_files.len();
         report.summary.css_files_scanned = css_files.len();
@@ -296,64 +325,23 @@ fn process_migration(
             }
         }
 
-        let mut rule_map = std::collections::HashMap::new();
-        let mut variable_map = std::collections::HashMap::new();
-        let mut stylesheets = Vec::new();
-        for content in &css_contents {
-            if let Ok(stylesheet) = css2tw_core::css::parser::parse_css(content) {
-                stylesheets.push(stylesheet);
-            }
+        // Add inline CSS from CLI
+        if let Some(inline) = inline_css {
+            css_contents.push(inline.clone());
         }
 
-        for stylesheet in &stylesheets {
-            let rules = css2tw_core::css::parser::extract_style_rules(stylesheet);
-            let map = css2tw_core::css::parser::build_rule_map(&rules);
-            for (name, mappings) in map {
-                rule_map
-                    .entry(name)
-                    .or_insert_with(Vec::new)
-                    .extend(mappings);
-            }
-            let vars = css2tw_core::css::parser::extract_variables(&rules);
-            variable_map.extend(vars);
-        }
-
+        let converter = css2tw_core::Converter::new(resolved_config.clone());
         let source_files = css2tw_core::source::Scanner::read_files_parallel(&other_files);
 
         for source_file in source_files {
-            use css2tw_core::source::ClassUsageParser;
-            let file_path = std::path::Path::new(&source_file.path);
-            let replacements = if file_path.extension().and_then(|s| s.to_str()) == Some("html") {
-                let html_parser = css2tw_core::source::html::HtmlParser;
-                let rules = stylesheets
-                    .iter()
-                    .flat_map(|s| css2tw_core::css::parser::extract_style_rules(s))
-                    .collect::<Vec<_>>();
-                html_parser
-                    .plan_html(&source_file, &rules, resolved_config.tailwind.rem_scale)
-                    .unwrap_or_default()
-            } else if file_path.extension().and_then(|s| s.to_str()) == Some("jsx")
-                || file_path.extension().and_then(|s| s.to_str()) == Some("tsx")
-            {
-                let jsx_parser = css2tw_core::source::jsx::JsxParser;
-                let rules = stylesheets
-                    .iter()
-                    .flat_map(|s| css2tw_core::css::parser::extract_style_rules(s))
-                    .collect::<Vec<_>>();
-                jsx_parser
-                    .plan_jsx(&source_file, &rules, resolved_config.tailwind.rem_scale)
-                    .unwrap_or_default()
-            } else {
-                let jsx_parser = css2tw_core::source::jsx::JsxParser;
-                let classes = jsx_parser.extract_classes(&source_file).unwrap_or_default();
-                css2tw_core::rewrite::planner::ConversionPlanner::plan(
-                    &classes,
-                    &rule_map,
-                    &variable_map,
-                    resolved_config.tailwind.rem_scale,
-                    resolved_config.confidence_threshold as f64,
-                )
-                .unwrap_or_default()
+            let replacements = match converter.plan_file(&source_file, &css_contents) {
+                Ok(reps) => reps,
+                Err(e) => {
+                    report
+                        .errors
+                        .push(format!("Error planning {}: {}", source_file.path, e));
+                    continue;
+                }
             };
 
             if !replacements.is_empty() {

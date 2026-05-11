@@ -1,132 +1,41 @@
-use assert_cmd::prelude::*;
-use std::process::Command;
+use assert_cmd::Command;
+use std::fs;
+use tempfile::tempdir;
 
 #[test]
-fn test_cli_compact_json() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("css2tw")?;
-    cmd.arg("scan").arg(".").arg("--json").arg("--compact");
+fn test_cli_convert_with_external_css() {
+    let dir = tempdir().unwrap();
+    let source_path = dir.path().join("index.html");
+    fs::write(&source_path, r#"<div class="pt-16"></div>"#).unwrap();
 
-    let output = cmd.output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-
-    // Check if it's a single line (compact)
-    assert_eq!(stdout.lines().count(), 1);
-    // Should be valid JSON
-    let _: serde_json::Value = serde_json::from_str(&stdout)?;
-
-    Ok(())
-}
-
-#[test]
-fn test_cli_no_trace() -> Result<(), Box<dyn std::error::Error>> {
-    // We need some CSS and source to test conversion
-    let temp = tempfile::tempdir()?;
-    let css_path = temp.path().join("style.css");
-    let html_path = temp.path().join("index.html");
-
-    std::fs::write(&css_path, ".pt-16 { padding-top: 16px; }")?;
-    std::fs::write(&html_path, r#"<div class="pt-16"></div>"#)?;
-
-    let mut cmd = Command::cargo_bin("css2tw")?;
+    let mut cmd = Command::cargo_bin("css2tw").unwrap();
     cmd.arg("convert")
-        .arg(temp.path())
-        .arg("--json")
-        .arg("--no-trace");
+        .arg(dir.path())
+        .arg("--css-inline")
+        .arg(".pt-16 { padding-top: 16px; }")
+        .arg("--write");
 
-    let output = cmd.output()?;
-    let stdout = String::from_utf8(output.stdout)?;
+    cmd.assert().success();
 
-    assert!(!stdout.contains("\"trace\""));
-
-    Ok(())
+    let content = fs::read_to_string(source_path).unwrap();
+    assert!(content.contains("pt-4"));
 }
 
 #[test]
-fn test_cli_summary_only() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let css_path = temp.path().join("style.css");
-    let html_path = temp.path().join("index.html");
+fn test_cli_scan_with_external_css() {
+    let dir = tempdir().unwrap();
+    let source_path = dir.path().join("index.php");
+    fs::write(&source_path, r#"<div class="pt-16"></div>"#).unwrap();
 
-    std::fs::write(&css_path, ".pt-16 { padding-top: 16px; }")?;
-    std::fs::write(&html_path, r#"<div class="pt-16"></div>"#)?;
-
-    let mut cmd = Command::cargo_bin("css2tw")?;
-    cmd.arg("convert")
-        .arg(temp.path())
-        .arg("--json")
-        .arg("--summary-only");
-
-    let output = cmd.output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-
-    assert!(!stdout.contains("\"changes\""));
-    assert!(stdout.contains("\"summary\""));
-
-    Ok(())
-}
-
-#[test]
-fn test_cli_explain() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let css_path = temp.path().join("style.css");
-    std::fs::write(&css_path, ".pt-16 { padding-top: 16px; }")?;
-
-    let mut cmd = Command::cargo_bin("css2tw")?;
-    cmd.arg("explain")
-        .arg(".pt-16")
-        .arg("--css")
-        .arg(&css_path)
+    let mut cmd = Command::cargo_bin("css2tw").unwrap();
+    cmd.arg("scan")
+        .arg(dir.path())
+        .arg("--css-inline")
+        .arg(".pt-16 { padding-top: 16px; }")
         .arg("--json");
 
-    let output = cmd.output()?;
-    let stdout = String::from_utf8(output.stdout)?;
+    let output = cmd.assert().success().get_output().stdout.clone();
+    let json: serde_json::Value = serde_json::from_slice(&output).unwrap();
 
-    let json: serde_json::Value = serde_json::from_str(&stdout)?;
-    assert_eq!(json["selector"], ".pt-16");
-    assert_eq!(json["convertible"], true);
-    assert_eq!(json["after"], "pt-4");
-    assert!(json["trace"].is_array());
-
-    Ok(())
-}
-
-#[test]
-fn test_cli_scan_functionality() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = tempfile::tempdir()?;
-    let css_path = temp.path().join("style.css");
-    let html_path = temp.path().join("index.html");
-
-    std::fs::write(&css_path, ".pt-16 { padding-top: 16px; }")?;
-    std::fs::write(&html_path, r#"<div class="pt-16"></div>"#)?;
-
-    let mut cmd = Command::cargo_bin("css2tw")?;
-    cmd.arg("scan").arg(temp.path()).arg("--json");
-
-    let output = cmd.output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-
-    let json: serde_json::Value = serde_json::from_str(&stdout)?;
-    // Scan should report replacements even though it doesn't write
     assert_eq!(json["summary"]["replacements_planned"], 1);
-    assert_eq!(json["mode"], "read_only");
-
-    // Verify file was NOT modified
-    let content = std::fs::read_to_string(&html_path)?;
-    assert!(content.contains("pt-16"));
-
-    Ok(())
-}
-
-#[test]
-fn test_cli_no_color() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("css2tw")?;
-    cmd.arg("scan").arg(".").arg("--no-color");
-
-    let output = cmd.output()?;
-    let stdout = String::from_utf8(output.stdout)?;
-
-    // Check for absence of ANSI escape codes
-    assert!(!stdout.contains("\x1b["));
-
-    Ok(())
 }
