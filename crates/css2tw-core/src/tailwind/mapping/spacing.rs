@@ -27,10 +27,10 @@ pub fn length_to_tw(prop: &impl LightningToCss, rem_scale: f32) -> Option<String
             if dest == "50%" {
                 return Some("1/2".to_string());
             }
-            return Some(format!("[{}]", dest));
+            return Some(format!("[{}]", super::ensure_leading_zero(&dest)));
         }
         // Fallback for custom values
-        return Some(format!("[{}]", dest));
+        return Some(format!("[{}]", super::ensure_leading_zero(&dest)));
     }
     None
 }

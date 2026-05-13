@@ -58,9 +58,37 @@ fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
 }
 
 /// Escapes a value for use in Tailwind arbitrary values [...]
-/// Replaces spaces with underscores and removes double quotes.
+/// Ensures that a string starting with a dot has a leading zero.
+/// Also handles dots after spaces or underscores.
+pub(crate) fn ensure_leading_zero(value: &str) -> String {
+    let mut result = String::new();
+    let mut chars = value.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if c == '.' {
+            if result.is_empty()
+                || result.ends_with('_')
+                || result.ends_with(' ')
+                || result.ends_with('-')
+            {
+                if let Some(&next) = chars.peek() {
+                    if next.is_ascii_digit() {
+                        result.push('0');
+                    }
+                }
+            }
+        }
+        result.push(c);
+    }
+    result
+}
+
+/// Escapes a value for use in Tailwind arbitrary values [...]
+/// Replaces spaces with underscores, removes double quotes, and ensures
+/// leading dots have a leading zero (e.g., .5rem -> 0.5rem).
 fn escape_arbitrary_value(value: &str) -> String {
-    value
+    let fixed = ensure_leading_zero(value);
+    fixed
         .chars()
         .map(|c| if c.is_whitespace() { '_' } else { c })
         .collect::<String>()
@@ -655,5 +683,58 @@ mod tests {
         let out_bd = map_property(border, false, &variant, 4.0, &vars).unwrap();
         assert!(!out_bd.contains(' '), "Border contains spaces: {}", out_bd);
         assert_eq!(out_bd, "border-[1px_solid_red]");
+    }
+
+    #[test]
+    fn test_leading_dot_values() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css = ".x { opacity: .5; margin: .5rem; padding: .25%; width: .125px; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        // opacity: .5 -> opacity-[0.5]
+        let opacity = &rules[0].declarations.declarations[0];
+        assert_eq!(
+            map_property(opacity, false, &variant, 4.0, &vars),
+            Some("opacity-[0.5]".to_string())
+        );
+
+        // margin: .5rem -> m-[0.5rem]
+        let margin = &rules[0].declarations.declarations[1];
+        assert_eq!(
+            map_property(margin, false, &variant, 4.0, &vars),
+            Some("m-[0.5rem]".to_string())
+        );
+
+        // padding: .25% -> p-[0.25%]
+        let padding = &rules[0].declarations.declarations[2];
+        assert_eq!(
+            map_property(padding, false, &variant, 4.0, &vars),
+            Some("p-[0.25%]".to_string())
+        );
+
+        // Negative values
+        let css_neg = ".neg { margin: -.5rem; opacity: -.1; }";
+        let stylesheet_neg = StyleSheet::parse(css_neg, ParserOptions::default()).unwrap();
+        let parsed_neg = crate::css::parser::ParsedStylesheet {
+            ast: stylesheet_neg,
+        };
+        let rules_neg = crate::css::parser::extract_style_rules(&parsed_neg);
+
+        let margin_neg = &rules_neg[0].declarations.declarations[0];
+        assert_eq!(
+            map_property(margin_neg, false, &variant, 4.0, &vars),
+            Some("m-[-0.5rem]".to_string())
+        );
+
+        let opacity_neg = &rules_neg[0].declarations.declarations[1];
+        assert_eq!(
+            map_property(opacity_neg, false, &variant, 4.0, &vars),
+            Some("opacity-[-0.1]".to_string())
+        );
     }
 }

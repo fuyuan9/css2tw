@@ -571,7 +571,7 @@ mod tests {
 
         let resolved = resolver.resolve_styles(element);
         let tw = resolved.to_tailwind_string(4.0);
- 
+
         // When include_tag_selectors is true, even * and :root styles are included
         assert!(tw.contains("m-[0]"));
         assert!(tw.contains("red"));
