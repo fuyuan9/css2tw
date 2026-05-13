@@ -16,7 +16,7 @@
 - **🧩 Template Fragment Support:** Robust parsing for fragmented template files (PHP, Blade, Jinja2, etc.) while protecting template tags (e.g., `{{ ... }}`).
 - **📝 Conversion Tracing:** Provides a detailed "trace" for each conversion, explaining exactly which CSS rules led to the resulting Tailwind classes.
 - **🔍 Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
-- **🚫 Global Selector Exclusion:** Automatically ignores `*` and `:root` selectors to keep utility classes clean and focus on component-level styles.
+- **🚫 Tag Selector Filtering:** Automatically ignores styles from selectors without classes or IDs (e.g., `div`, `p`, `*`, `:root`) by default to prevent global base styles from polluting component-level classes. Use `--include-tag-selectors` to include them.
 - **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via CLI or JSON config.
 - **💉 Explicit CSS Injection:** To ensure deterministic behavior, CSS definitions must be explicitly provided. Automatic scanning is disabled by default to prioritize control.
 
@@ -110,6 +110,7 @@ Analyze a repository and report convertible classes without writing any files. *
 - `--summary-only`: Return only the aggregate summary without individual class records.
 - `--css-file <PATH>`: Path to an external CSS file to include in the conversion logic. Required for CSS-based conversion.
 - `--css-inline <CSS>`: A string containing inline CSS definitions.
+- `--include-tag-selectors`: Include styles from selectors without classes or IDs (e.g., `div`, `*`, `:root`) in the conversion. By default, these are ignored to prevent global styles from bloating individual element classes.
 
 #### `convert [PATH]`
 
@@ -125,6 +126,7 @@ Perform migration planning and optionally write Tailwind utility classes back to
 - `--summary-only`: Return only the aggregate summary.
 - `--css-file <PATH>`: Path to an external CSS file to include. Required for CSS-based conversion.
 - `--css-inline <CSS>`: A string containing inline CSS definitions.
+- `--include-tag-selectors`: Include styles from selectors without classes or IDs (e.g., `div`, `*`, `:root`) in the conversion. By default, these are ignored to prevent global styles from bloating individual element classes.
 
 #### `explain <SELECTOR> --css <PATH>`
 

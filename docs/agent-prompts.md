@@ -19,14 +19,23 @@ css2tw convert ./src --config-json '{"tailwind": {"customTheme": {"brand-red": "
 ## 2. Using the JSON Schema
 
 To ensure the agent perfectly understands the tool's output, it can first fetch the schema:
-
+ 
 ```bash
 css2tw schema
 ```
+ 
+## 3. Migration Strategy (Tag Selectors)
+ 
+By default, `css2tw` only converts styles from selectors that include a **class** or **ID**. This prevents global styles (like `div { margin: 0 }` or `* { box-sizing: border-box }`) from being added to every element as Tailwind utility classes.
+ 
+### When to include Tag Selectors:
+If the project relies heavily on tag-level styling and the agent needs to move all styles into utility classes:
+- Pass the `--include-tag-selectors` flag.
+ 
+### Agent Advice:
+"Prefer the default (filtering) for large legacy projects to keep the HTML clean. Only enable tag selector conversion if explicitly asked to eliminate global CSS files entirely."
 
-The agent should use this schema to validate its internal parsing logic.
-
-## 3. Explainability & User Feedback
+## 4. Explainability & User Feedback
 
 When an agent suggests a conversion, it should use the `trace` field in the JSON report to explain *why* it made that choice. **Note: The `--trace` flag must be explicitly passed to include this field.**
 
@@ -44,14 +53,14 @@ When an agent suggests a conversion, it should use the `trace` field in the JSON
 }
 ```
 
-## 4. Error Handling & Recovery
+## 5. Error Handling & Recovery
 
 If `css2tw` reports an unconverted class, the agent should:
 1. Check the `reason` field (e.g., "Complex Selector").
 2. Attempt a manual conversion or ask the user for clarification.
 3. Use `css2tw explain <selector> --css <path>` to get more details on why the engine struggled.
 
-## 5. CSS Context Injection (Mandatory)
+## 6. CSS Context Injection (Mandatory)
 
 To ensure deterministic results, `css2tw` does not automatically scan for CSS files in the target directory. Agents **must** identify and provide relevant CSS context.
 

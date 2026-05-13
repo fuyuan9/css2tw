@@ -7,6 +7,7 @@ This tool is designed to be highly interoperable with AI agents for automated co
 1. **Deterministic & Minimal JSON Output:** Always use the `--json` flag. Output is minified and omits `trace` and `reasons` fields by default to optimize token consumption in AI agent workflows. Use `--trace` or `--reasons` only when deep reasoning is required.
 2. **Read-Only by Default:** The tool operates in dry-run mode unless the `--write` flag is explicitly passed.
 3. **Confidence Scoring:** `css2tw` calculates a confidence score (0.0 to 1.0) for every conversion. By default, agents should verify high-confidence conversions and request user confirmation for low-confidence ones.
+4. **Tag Selector Filtering:** By default, styles from tag-only selectors (e.g., `div`, `*`) are ignored to keep component classes clean. Agents can override this with `--include-tag-selectors` if they need to migrate global base styles into utility classes.
 
 ## Example Workflows
 
