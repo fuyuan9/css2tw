@@ -65,6 +65,7 @@ pub struct TailwindMapping<'i> {
     pub property: Property<'i>,
     pub variant: TailwindVariant,
     pub specificity: u32,
+    pub important: bool,
 }
 
 /// Builds a map of CSS class name to its properties and variants
@@ -153,6 +154,8 @@ pub fn build_rule_map<'i, 'a>(
 
         if let Some(name) = class_name {
             let specificity = selector.specificity();
+
+            // Handle normal declarations
             let mappings = rule
                 .declarations
                 .declarations
@@ -161,10 +164,24 @@ pub fn build_rule_map<'i, 'a>(
                     property: prop.clone(),
                     variant: variant.clone(),
                     specificity,
-                })
-                .collect::<Vec<_>>();
+                    important: false,
+                });
 
-            map.entry(name).or_default().extend(mappings);
+            // Handle important declarations
+            let important_mappings =
+                rule.declarations
+                    .important_declarations
+                    .iter()
+                    .map(|prop| TailwindMapping {
+                        property: prop.clone(),
+                        variant: variant.clone(),
+                        specificity,
+                        important: true,
+                    });
+
+            map.entry(name)
+                .or_default()
+                .extend(mappings.chain(important_mappings));
         }
     }
 

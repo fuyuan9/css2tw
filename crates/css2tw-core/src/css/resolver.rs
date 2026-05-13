@@ -39,15 +39,26 @@ impl<'i> ResolvedElementStyle<'i> {
             let mut name = String::new();
             let mut printer = lightningcss::printer::Printer::new(&mut name, Default::default());
             // We use the property name as the key for conflict resolution
-            let _ = mapping.property.to_css(&mut printer, false);
+            let _ = mapping.property.to_css(&mut printer, mapping.important);
             if let Some(pos) = name.find(':') {
                 name = name[..pos].to_string();
             }
 
             let key = (name, mapping.variant.clone());
             if let Some(existing) = best_props.get(&key) {
-                // If specificity is equal or higher, the later one wins
-                if mapping.specificity >= existing.specificity {
+                // Priority:
+                // 1. important flag
+                // 2. specificity
+                // 3. order of appearance (later wins)
+                let should_replace = if mapping.important && !existing.important {
+                    true
+                } else if !mapping.important && existing.important {
+                    false
+                } else {
+                    mapping.specificity >= existing.specificity
+                };
+
+                if should_replace {
                     best_props.insert(key, mapping);
                 }
             } else {
@@ -59,6 +70,7 @@ impl<'i> ResolvedElementStyle<'i> {
         for mapping in best_props.values() {
             if let Some(tw_class) = map_property(
                 &mapping.property,
+                mapping.important,
                 &mapping.variant,
                 rem_scale,
                 &self.variable_map,
@@ -89,7 +101,11 @@ impl<'i> ResolvedElementStyle<'i> {
                 &mut dest,
                 lightningcss::printer::PrinterOptions::default(),
             );
-            if mapping.property.to_css(&mut printer, false).is_ok() {
+            if mapping
+                .property
+                .to_css(&mut printer, mapping.important)
+                .is_ok()
+            {
                 if !dest.is_empty() {
                     parts.push(dest);
                 }
@@ -185,6 +201,11 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                     lightningcss::printer::PrinterOptions::default(),
                 );
                 if lightningcss::traits::ToCss::to_css(selector, &mut printer).is_ok() {
+                    // Skip universal selector (*) and :root selector as they should be in global styles
+                    if sel_str == "*" || sel_str == ":root" {
+                        continue;
+                    }
+
                     let clean_sel_str = self.clean_selector(selector);
                     let scraper_sel_res = Selector::parse(&clean_sel_str);
 
@@ -200,6 +221,15 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                                         property: prop.clone(),
                                         variant: variant.clone(),
                                         specificity,
+                                        important: false,
+                                    });
+                                }
+                                for prop in &rule.declarations.important_declarations {
+                                    resolved_props.push(TailwindMapping {
+                                        property: prop.clone(),
+                                        variant: variant.clone(),
+                                        specificity,
+                                        important: true,
                                     });
                                 }
                             }
@@ -377,7 +407,7 @@ mod tests {
             .property
             .to_css(
                 &mut lightningcss::printer::Printer::new(&mut dest, Default::default()),
-                false,
+                res_btn.properties[0].important,
             )
             .unwrap();
         assert!(dest.contains("red") || dest.contains("#f00"));
@@ -397,7 +427,7 @@ mod tests {
             .property
             .to_css(
                 &mut lightningcss::printer::Printer::new(&mut dest, Default::default()),
-                false,
+                res_div.properties[0].important,
             )
             .unwrap();
         assert!(dest.contains("blue") || dest.contains("#00f"));
@@ -482,5 +512,53 @@ mod tests {
         // blue is normalized to #00f by lightningcss
         assert!(tw.contains("#00f"));
         assert!(!tw.contains("red"));
+    }
+
+    #[test]
+    fn test_important_priority() {
+        let css = "div.card { color: red; } .card { color: blue !important; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+        let resolver = StyleResolver::new(&rules);
+
+        let html = Html::parse_fragment("<div class=\"card\"></div>");
+        let element = html
+            .root_element()
+            .select(&Selector::parse(".card").unwrap())
+            .next()
+            .unwrap();
+
+        let resolved = resolver.resolve_styles(element);
+        let tw = resolved.to_tailwind_string(4.0);
+
+        // .card { color: blue !important; } should beat div.card { color: red; }
+        // even though div.card has higher specificity (0,1,1 vs 0,1,0)
+        assert!(tw.contains("blue") || tw.contains("#00f"));
+        assert!(tw.ends_with("!"));
+        assert!(!tw.contains("red"));
+    }
+
+    #[test]
+    fn test_ignore_global_selectors() {
+        let css = "* { margin: 0; } :root { --bg: white; } .card { color: red; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+        let resolver = StyleResolver::new(&rules);
+
+        let html = Html::parse_fragment("<div class=\"card\"></div>");
+        let element = html
+            .root_element()
+            .select(&Selector::parse(".card").unwrap())
+            .next()
+            .unwrap();
+
+        let resolved = resolver.resolve_styles(element);
+        let tw = resolved.to_tailwind_string(4.0);
+
+        // Should NOT have margin-0 (from *) or any var from :root
+        assert!(!tw.contains("m-0"));
+        assert!(tw.contains("red"));
     }
 }

@@ -60,7 +60,11 @@ fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
 /// Escapes a value for use in Tailwind arbitrary values [...]
 /// Replaces spaces with underscores and removes double quotes.
 fn escape_arbitrary_value(value: &str) -> String {
-    value.replace(' ', "_").replace('"', "")
+    value
+        .chars()
+        .map(|c| if c.is_whitespace() { '_' } else { c })
+        .collect::<String>()
+        .replace('"', "")
 }
 
 /// Formats a spacing property with proper negative value support.
@@ -79,6 +83,7 @@ fn format_spacing(prop: &str, value: &str) -> String {
 /// and any applicable CSS variables.
 pub fn map_property(
     property: &Property,
+    important: bool,
     variant: &TailwindVariant,
     rem_scale: f32,
     variable_map: &HashMap<String, String>,
@@ -88,7 +93,7 @@ pub fn map_property(
     // Resolve variables if any
     let mut prop_str = String::new();
     let mut printer = Printer::new(&mut prop_str, PrinterOptions::default());
-    let _ = property.to_css(&mut printer, false);
+    let _ = property.to_css(&mut printer, important);
 
     let resolved_str = resolve_vars(&prop_str, variable_map);
 
@@ -136,10 +141,15 @@ pub fn map_property(
                     escape_arbitrary_value(val)
                 ));
             } else {
+                let suffix = if important { "!" } else { "" };
                 return Some(format!(
                     "{}[{}]",
                     prefix,
-                    escape_arbitrary_value(resolved_str.replace(": ", ":").as_str())
+                    format!(
+                        "{}{}",
+                        escape_arbitrary_value(resolved_str.replace(": ", ":").as_str()),
+                        suffix
+                    )
                 ));
             }
         }
@@ -366,7 +376,7 @@ pub fn map_property(
                         .unwrap();
                     Some(format!("scale-{}", val))
                 } else {
-                    Some(format!("[transform:{}]", dest))
+                    Some(format!("[transform:{}]", escape_arbitrary_value(&dest)))
                 }
             } else {
                 None
@@ -401,16 +411,14 @@ pub fn map_property(
         }
         _ => {
             if prop_str.starts_with("content") {
+                let val = prop_str
+                    .split_once(':')
+                    .map(|(_, v)| v.trim().trim_end_matches(';'))
+                    .unwrap_or("");
                 return Some(format!(
                     "{}content-[{}]",
                     prefix,
-                    prop_str
-                        .split_once(':')
-                        .unwrap()
-                        .1
-                        .trim()
-                        .trim_end_matches(';')
-                        .replace(' ', "_")
+                    escape_arbitrary_value(val)
                 ));
             }
             if prop_str.starts_with("box-sizing") {
@@ -439,7 +447,10 @@ pub fn map_property(
         }
     };
 
-    result.map(|s| format!("{}{}", prefix, s))
+    result.map(|s| {
+        let suffix = if important { "!" } else { "" };
+        format!("{}{}{}", prefix, s, suffix)
+    })
 }
 
 #[cfg(test)]
@@ -460,13 +471,13 @@ mod tests {
 
         let none_prop = &rules[0].declarations.declarations[0];
         assert_eq!(
-            map_property(none_prop, &variant, 4.0, &vars),
+            map_property(none_prop, false, &variant, 4.0, &vars),
             Some("hidden".to_string())
         );
 
         let flex_prop = &rules[1].declarations.declarations[0];
         assert_eq!(
-            map_property(flex_prop, &variant, 4.0, &vars),
+            map_property(flex_prop, false, &variant, 4.0, &vars),
             Some("flex".to_string())
         );
     }
@@ -484,13 +495,13 @@ mod tests {
 
         let pt = &rules[0].declarations.declarations[0];
         assert_eq!(
-            map_property(pt, &variant, 4.0, &vars),
+            map_property(pt, false, &variant, 4.0, &vars),
             Some("pt-4".to_string())
         );
 
         let mb = &rules[0].declarations.declarations[1];
         assert_eq!(
-            map_property(mb, &variant, 4.0, &vars),
+            map_property(mb, false, &variant, 4.0, &vars),
             Some("mb-4".to_string())
         );
     }
@@ -509,7 +520,7 @@ mod tests {
         let mr = &rules[0].declarations.declarations[0];
         // -15px at 16px/rem and rem-scale 4.0: (-15 / 16) * 4 = -3.75
         assert_eq!(
-            map_property(mr, &variant, 4.0, &vars),
+            map_property(mr, false, &variant, 4.0, &vars),
             Some("-mr-3.75".to_string())
         );
     }
@@ -526,7 +537,7 @@ mod tests {
         let vars = HashMap::new();
 
         let bg = &rules[0].declarations.declarations[0];
-        let out = map_property(bg, &variant, 4.0, &vars).unwrap();
+        let out = map_property(bg, false, &variant, 4.0, &vars).unwrap();
         // Should have underscores instead of spaces and NO double quotes
         assert_eq!(out, "bg-[url(../img.svg)]");
     }
@@ -543,11 +554,11 @@ mod tests {
         let vars = HashMap::new();
 
         let color = &rules[0].declarations.declarations[0];
-        let out = map_property(color, &variant, 4.0, &vars).unwrap();
+        let out = map_property(color, false, &variant, 4.0, &vars).unwrap();
         assert!(out.contains("#f00") || out.contains("red"));
 
         let bg = &rules[0].declarations.declarations[1];
-        let out = map_property(bg, &variant, 4.0, &vars).unwrap();
+        let out = map_property(bg, false, &variant, 4.0, &vars).unwrap();
         assert!(out.contains("bg-") && (out.contains("#f00") || out.contains("red")));
     }
 
@@ -563,7 +574,7 @@ mod tests {
         let vars = HashMap::new();
         let pt = &rules[0].declarations.declarations[0];
         assert_eq!(
-            map_property(pt, &variant, 4.0, &vars),
+            map_property(pt, false, &variant, 4.0, &vars),
             Some("hover:pt-4".to_string())
         );
     }
@@ -581,16 +592,68 @@ mod tests {
         let pt = &rules[0].declarations.declarations[0];
 
         assert_eq!(
-            map_property(pt, &variant, 4.0, &vars),
+            map_property(pt, false, &variant, 4.0, &vars),
             Some("pt-4".to_string())
         );
         assert_eq!(
-            map_property(pt, &variant, 1.0, &vars),
+            map_property(pt, false, &variant, 1.0, &vars),
             Some("pt-1".to_string())
         );
         assert_eq!(
-            map_property(pt, &variant, 5.0, &vars),
+            map_property(pt, false, &variant, 5.0, &vars),
             Some("pt-5".to_string())
         );
+    }
+
+    #[test]
+    fn test_map_important() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css = ".x { display: none !important; color: red !important; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        // lightningcss might put important ones in important_declarations
+        // But here we check map_property directly
+        let none_prop = &rules[0].declarations.important_declarations[0];
+        assert_eq!(
+            map_property(none_prop, true, &variant, 4.0, &vars),
+            Some("hidden!".to_string())
+        );
+
+        let color_prop = &rules[0].declarations.important_declarations[1];
+        let out = map_property(color_prop, true, &variant, 4.0, &vars).unwrap();
+        assert!(out.ends_with("!"));
+        assert!(out.contains("text-"));
+    }
+
+    #[test]
+    fn test_arbitrary_value_spacing() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css = ".x { transform: translate(10px, 20px); border: 1px solid red; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        let transform = &rules[0].declarations.declarations[0];
+        let out_tr = map_property(transform, false, &variant, 4.0, &vars).unwrap();
+        // Should NOT contain spaces
+        assert!(
+            !out_tr.contains(' '),
+            "Transform contains spaces: {}",
+            out_tr
+        );
+        assert!(out_tr.contains('_') || !out_tr.contains("translate(10px, 20px)"));
+
+        let border = &rules[0].declarations.declarations[1];
+        let out_bd = map_property(border, false, &variant, 4.0, &vars).unwrap();
+        assert!(!out_bd.contains(' '), "Border contains spaces: {}", out_bd);
+        assert_eq!(out_bd, "border-[1px_solid_red]");
     }
 }
