@@ -66,7 +66,7 @@ fn test_cli_advanced_html_conversion() {
     assert!(output.contains("pb-2"));
 
     // Specificity: #unique-header should override .header
-    assert!(output.contains("text-8"));
+    assert!(output.contains("text-[2rem]"));
     assert!(output.contains("font-bold"));
 }
 

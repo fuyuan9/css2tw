@@ -11,7 +11,7 @@ pub mod spacing;
 pub mod typography;
 
 use spacing::length_to_tw;
-use typography::map_font_weight;
+use typography::{map_font_size, map_font_weight};
 
 use crate::tailwind::variant::TailwindVariant;
 use regex::Regex;
@@ -241,7 +241,7 @@ pub fn map_property(
         Property::MinHeight(v) => length_to_tw(v, rem_scale).map(|s| format!("min-h-{}", s)),
 
         // Typography
-        Property::FontSize(v) => length_to_tw(v, rem_scale).map(|s| format!("text-{}", s)),
+        Property::FontSize(v) => map_font_size(v, rem_scale).map(|s| format!("text-{}", s)),
         Property::Color(c) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -735,6 +735,53 @@ mod tests {
         assert_eq!(
             map_property(opacity_neg, false, &variant, 4.0, &vars),
             Some("opacity-[-0.1]".to_string())
+        );
+    }
+
+    #[test]
+    fn test_font_size_mapping() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css = ".x { font-size: 14px; font-size: 16px; font-size: 12px; font-size: 15px; font-size: 1rem; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        // 14px -> text-sm
+        let fs14 = &rules[0].declarations.declarations[0];
+        assert_eq!(
+            map_property(fs14, false, &variant, 4.0, &vars),
+            Some("text-sm".to_string())
+        );
+
+        // 16px -> text-base
+        let fs16 = &rules[0].declarations.declarations[1];
+        assert_eq!(
+            map_property(fs16, false, &variant, 4.0, &vars),
+            Some("text-base".to_string())
+        );
+
+        // 12px -> text-xs
+        let fs12 = &rules[0].declarations.declarations[2];
+        assert_eq!(
+            map_property(fs12, false, &variant, 4.0, &vars),
+            Some("text-xs".to_string())
+        );
+
+        // 15px -> text-[15px]
+        let fs15 = &rules[0].declarations.declarations[3];
+        assert_eq!(
+            map_property(fs15, false, &variant, 4.0, &vars),
+            Some("text-[15px]".to_string())
+        );
+
+        // 1rem -> text-base
+        let fs1rem = &rules[0].declarations.declarations[4];
+        assert_eq!(
+            map_property(fs1rem, false, &variant, 4.0, &vars),
+            Some("text-base".to_string())
         );
     }
 }
