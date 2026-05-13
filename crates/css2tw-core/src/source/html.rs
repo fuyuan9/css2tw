@@ -56,10 +56,11 @@ impl HtmlParser {
         style_rules: &[&lightningcss::rules::style::StyleRule],
         rem_scale: f32,
         migrate_only_existing_classes: bool,
+        include_tag_selectors: bool,
     ) -> Result<Vec<Replacement>, Css2TwError> {
         let mut replacements = Vec::new();
         let html = Html::parse_document(&source.content);
-        let resolver = StyleResolver::new(style_rules);
+        let resolver = StyleResolver::new(style_rules, include_tag_selectors);
 
         // Track current position in source to handle multiple elements with same classes
         let mut current_search_pos = 0;

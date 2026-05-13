@@ -165,6 +165,7 @@ impl JsxParser {
         style_rules: &[&lightningcss::rules::style::StyleRule],
         rem_scale: f32,
         migrate_only_existing_classes: bool,
+        include_tag_selectors: bool,
     ) -> Result<Vec<Replacement>, Css2TwError> {
         let allocator = Allocator::default();
         let source_type = SourceType::from_path(&source.path)
@@ -172,7 +173,7 @@ impl JsxParser {
             .with_jsx(true);
         let ret = Parser::new(&allocator, &source.content, source_type).parse();
 
-        let resolver = StyleResolver::new(style_rules);
+        let resolver = StyleResolver::new(style_rules, include_tag_selectors);
         let mut visitor = JsxPlanVisitor {
             replacements: Vec::new(),
             resolver: &resolver,

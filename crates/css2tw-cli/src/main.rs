@@ -72,6 +72,9 @@ enum Commands {
         /// Inline CSS string to use for conversion
         #[arg(long)]
         css_inline: Option<String>,
+        /// Include tag selectors (e.g. div) in conversion
+        #[arg(long, default_value_t = false)]
+        include_tag_selectors: bool,
     },
     /// Perform migration planning and optionally write changes
     Convert {
@@ -105,6 +108,9 @@ enum Commands {
         /// Inline CSS string to use for conversion
         #[arg(long)]
         css_inline: Option<String>,
+        /// Include tag selectors (e.g. div) in conversion
+        #[arg(long, default_value_t = false)]
+        include_tag_selectors: bool,
     },
     /// Explain how a CSS class would be converted
     Explain {
@@ -134,6 +140,7 @@ fn main() -> anyhow::Result<()> {
             summary_only,
             css_file,
             css_inline,
+            include_tag_selectors,
         } => {
             process_migration(
                 path,
@@ -145,6 +152,7 @@ fn main() -> anyhow::Result<()> {
                 *summary_only,
                 css_file,
                 css_inline.as_ref(),
+                *include_tag_selectors,
                 &cli,
             )?;
         }
@@ -159,6 +167,7 @@ fn main() -> anyhow::Result<()> {
             summary_only,
             css_file,
             css_inline,
+            include_tag_selectors,
         } => {
             let mode = if *write && !*dry_run {
                 "write"
@@ -175,6 +184,7 @@ fn main() -> anyhow::Result<()> {
                 *summary_only,
                 css_file,
                 css_inline.as_ref(),
+                *include_tag_selectors,
                 &cli,
             )?;
         }
@@ -274,6 +284,7 @@ fn process_migration(
     summary_only: bool,
     extra_css_files: &[String],
     inline_css: Option<&String>,
+    include_tag_selectors: bool,
     cli: &Cli,
 ) -> anyhow::Result<()> {
     let mut resolved_config = if let Some(json) = config_json {
@@ -291,6 +302,8 @@ fn process_migration(
         }
         cfg
     };
+
+    resolved_config.rewrite.include_tag_selectors = include_tag_selectors;
 
     // Override config with explicit CLI flags if provided
     if cli.trace {

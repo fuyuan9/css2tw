@@ -63,6 +63,7 @@ impl FragmentParser {
         style_rules: &[&lightningcss::rules::style::StyleRule],
         rem_scale: f32,
         migrate_only_existing_classes: bool,
+        include_tag_selectors: bool,
     ) -> Result<Vec<Replacement>, Css2TwError> {
         let mut replacements = Vec::new();
 
@@ -99,7 +100,7 @@ impl FragmentParser {
 
         // 2. Parse the protected content with scraper
         let fragment = Html::parse_fragment(&protected_content);
-        let resolver = StyleResolver::new(style_rules);
+        let resolver = StyleResolver::new(style_rules, include_tag_selectors);
         let mut current_search_pos = 0usize;
 
         let root = fragment.root_element();

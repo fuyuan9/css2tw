@@ -175,15 +175,18 @@ pub struct StyleResolver<'i, 'a> {
     pub style_rules: &'a [&'a StyleRule<'i>],
     /// Global map of CSS variables.
     pub variable_map: std::collections::HashMap<String, String>,
+    /// Whether to include styles from tag selectors (without classes/IDs).
+    pub include_tag_selectors: bool,
 }
 
 impl<'i, 'a> StyleResolver<'i, 'a> {
     /// Creates a new StyleResolver and extracts variables from the provided rules.
-    pub fn new(style_rules: &'a [&'a StyleRule<'i>]) -> Self {
+    pub fn new(style_rules: &'a [&'a StyleRule<'i>], include_tag_selectors: bool) -> Self {
         let variable_map = crate::css::parser::extract_variables(style_rules);
         Self {
             style_rules,
             variable_map,
+            include_tag_selectors,
         }
     }
 
@@ -201,8 +204,8 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                     lightningcss::printer::PrinterOptions::default(),
                 );
                 if lightningcss::traits::ToCss::to_css(selector, &mut printer).is_ok() {
-                    // Skip universal selector (*) and :root selector as they should be in global styles
-                    if sel_str == "*" || sel_str == ":root" {
+                    // If configured, skip selectors that don't have classes or IDs (includes * and :root)
+                    if !self.include_tag_selectors && !self.has_class_or_id(selector) {
                         continue;
                     }
 
@@ -349,6 +352,18 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
         }
         variant
     }
+
+    /// Checks if a selector contains at least one class or ID component.
+    fn has_class_or_id(&self, selector: &lightningcss::selector::Selector<'i>) -> bool {
+        use lightningcss::selector::Component;
+        for component in selector.iter_raw_match_order() {
+            match component {
+                Component::Class(_) | Component::ID(_) => return true,
+                _ => {}
+            }
+        }
+        false
+    }
 }
 
 #[cfg(test)]
@@ -364,7 +379,7 @@ mod tests {
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        let resolver = StyleResolver::new(&rules);
+        let resolver = StyleResolver::new(&rules, true);
 
         let html = Html::parse_fragment("<div class=\"card\"></div>");
         let element = html
@@ -390,7 +405,7 @@ mod tests {
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        let resolver = StyleResolver::new(&rules);
+        let resolver = StyleResolver::new(&rules, true);
 
         // Test button
         let html_btn = Html::parse_fragment("<button class=\"btn\"></button>");
@@ -439,7 +454,7 @@ mod tests {
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        let resolver = StyleResolver::new(&rules);
+        let resolver = StyleResolver::new(&rules, true);
 
         let html = Html::parse_fragment("<button class=\"btn\"></button>");
         let btn = html
@@ -472,7 +487,7 @@ mod tests {
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        let resolver = StyleResolver::new(&rules);
+        let resolver = StyleResolver::new(&rules, true);
 
         let html = Html::parse_fragment("<div class=\"card\"></div>");
         let element = html
@@ -495,7 +510,7 @@ mod tests {
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        let resolver = StyleResolver::new(&rules);
+        let resolver = StyleResolver::new(&rules, true);
 
         let html = Html::parse_fragment("<div class=\"card\"></div>");
         let element = html
@@ -520,7 +535,7 @@ mod tests {
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        let resolver = StyleResolver::new(&rules);
+        let resolver = StyleResolver::new(&rules, true);
 
         let html = Html::parse_fragment("<div class=\"card\"></div>");
         let element = html
@@ -545,7 +560,7 @@ mod tests {
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
         let rules = crate::css::parser::extract_style_rules(&parsed);
-        let resolver = StyleResolver::new(&rules);
+        let resolver = StyleResolver::new(&rules, true);
 
         let html = Html::parse_fragment("<div class=\"card\"></div>");
         let element = html
@@ -556,9 +571,38 @@ mod tests {
 
         let resolved = resolver.resolve_styles(element);
         let tw = resolved.to_tailwind_string(4.0);
-
-        // Should NOT have margin-0 (from *) or any var from :root
-        assert!(!tw.contains("m-0"));
+ 
+        // When include_tag_selectors is true, even * and :root styles are included
+        assert!(tw.contains("m-[0]"));
         assert!(tw.contains("red"));
+    }
+
+    #[test]
+    fn test_tag_selector_filtering() {
+        let css = "div { margin: 10px; } .card { padding: 5px; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let html = Html::parse_fragment("<div class=\"card\"></div>");
+        let element = html
+            .root_element()
+            .select(&Selector::parse(".card").unwrap())
+            .next()
+            .unwrap();
+
+        // 1. With include_tag_selectors = true
+        let resolver_all = StyleResolver::new(&rules, true);
+        let res_all = resolver_all.resolve_styles(element);
+        let tw_all = res_all.to_tailwind_string(4.0);
+        assert!(tw_all.contains("m-[10px]")); // from div
+        assert!(tw_all.contains("p-[5px]")); // from .card
+
+        // 2. With include_tag_selectors = false
+        let resolver_filtered = StyleResolver::new(&rules, false);
+        let res_filtered = resolver_filtered.resolve_styles(element);
+        let tw_filtered = res_filtered.to_tailwind_string(4.0);
+        assert!(!tw_filtered.contains("m-[10px]")); // div style should be skipped
+        assert!(tw_filtered.contains("p-[5px]")); // .card style should be kept
     }
 }

@@ -103,6 +103,8 @@ pub struct RewriteConfig {
     pub remove_converted_css: bool,
     pub sort_tailwind_classes: bool,
     pub migrate_only_existing_classes: bool,
+    #[serde(default)]
+    pub include_tag_selectors: bool,
 }
 
 impl Default for RewriteConfig {
@@ -112,6 +114,7 @@ impl Default for RewriteConfig {
             remove_converted_css: false,
             sort_tailwind_classes: true,
             migrate_only_existing_classes: true,
+            include_tag_selectors: false,
         }
     }
 }
@@ -167,6 +170,7 @@ impl Default for Config {
                 remove_converted_css: false,
                 sort_tailwind_classes: true,
                 migrate_only_existing_classes: true,
+                include_tag_selectors: false,
             },
             agent: AgentConfig {
                 deterministic: true,

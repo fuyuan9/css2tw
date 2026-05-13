@@ -85,6 +85,7 @@ impl Converter {
                         &rules,
                         self.config.tailwind.rem_scale,
                         self.config.rewrite.migrate_only_existing_classes,
+                        self.config.rewrite.include_tag_selectors,
                     )
                     .unwrap_or_default()
             }
@@ -100,6 +101,7 @@ impl Converter {
                         &rules,
                         self.config.tailwind.rem_scale,
                         self.config.rewrite.migrate_only_existing_classes,
+                        self.config.rewrite.include_tag_selectors,
                     )
                     .unwrap_or_default()
             }
@@ -115,6 +117,7 @@ impl Converter {
                         &rules,
                         self.config.tailwind.rem_scale,
                         self.config.rewrite.migrate_only_existing_classes,
+                        self.config.rewrite.include_tag_selectors,
                     )
                     .unwrap_or_default()
             }
