@@ -9,7 +9,10 @@ use oxc_ast_visit::Visit;
 use oxc_parser::Parser;
 use oxc_span::SourceType;
 
-/// Specialized parser for JSX/TSX files using the OXC AST parser.
+/// Specialized parser for JSX/TSX files.
+///
+/// Leverages the `oxc` AST parser to accurately identify `className` and `class`
+/// attributes within JSX elements, even in complex TypeScript files.
 pub struct JsxParser;
 
 /// AST visitor to find all className or class string literals in JSX.
@@ -158,7 +161,10 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
 }
 
 impl JsxParser {
-    /// Plans the conversion of a JSX file by visiting its AST.
+    /// Plans the conversion of a JSX file by performing a full AST traversal.
+    ///
+    /// This visits each JSX element, resolves its styles against the CSS rules,
+    /// and generates precise replacements for the `className` attribute values.
     pub fn plan_jsx(
         &self,
         source: &SourceFile,

@@ -1,3 +1,8 @@
+//! Configuration module for css2tw.
+//!
+//! Defines the structure and default values for the tool's behavior,
+//! including file inclusion/exclusion, Tailwind settings, and AI agent options.
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

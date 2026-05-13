@@ -1,3 +1,9 @@
+//! Tailwind Mapping module.
+//!
+//! This module contains the core logic for mapping CSS properties to Tailwind
+//! utility classes. It handles length conversion (px/rem), color mapping,
+//! typography, and arbitrary value generation.
+
 use lightningcss::printer::{Printer, PrinterOptions};
 use lightningcss::properties::display::{
     Display, DisplayInside, DisplayKeyword, DisplayOutside, DisplayPair,
@@ -19,6 +25,10 @@ use std::collections::HashMap;
 
 /// Resolves CSS `var()` references in a string using a provided variable map.
 /// Supports recursive resolution up to 5 levels deep.
+///
+/// This allows the converter to handle CSS that relies on variables for
+/// colors, spacing, etc., by substituting them with their actual values
+/// before mapping to Tailwind.
 fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
     let mut result = value.to_string();
     // Regex to capture the variable name and an optional fallback value.
@@ -57,9 +67,10 @@ fn resolve_vars(value: &str, map: &HashMap<String, String>) -> String {
     result
 }
 
-/// Escapes a value for use in Tailwind arbitrary values [...]
-/// Ensures that a string starting with a dot has a leading zero.
-/// Also handles dots after spaces or underscores.
+/// Escapes a value for use in Tailwind arbitrary values [...].
+///
+/// Ensures that a string starting with a dot has a leading zero (e.g., .5 -> 0.5),
+/// which is required for valid Tailwind arbitrary value syntax.
 pub(crate) fn ensure_leading_zero(value: &str) -> String {
     let mut result = String::new();
     let mut chars = value.chars().peekable();
@@ -108,7 +119,8 @@ fn format_spacing(prop: &str, value: &str) -> String {
 /// Maps a single CSS property to its equivalent Tailwind utility class.
 ///
 /// Takes into account the current variant (e.g., hover:), the REM scale factor,
-/// and any applicable CSS variables.
+/// and any applicable CSS variables. It attempts to find a standard Tailwind
+/// class first, falling back to arbitrary values `[...]` if no direct match exists.
 pub fn map_property(
     property: &Property,
     important: bool,

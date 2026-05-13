@@ -1,3 +1,9 @@
+//! Conversion Planning module.
+//!
+//! This module coordinates the conversion process by taking identified class
+//! usages and determining the best Tailwind utility replacements based on
+//! the resolved CSS rules.
+
 use crate::css::parser::TailwindMapping;
 use crate::error::Css2TwError;
 use crate::rewrite::patch::Replacement;

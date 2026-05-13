@@ -9,7 +9,9 @@ use regex::Regex;
 use scraper::{Html, Selector};
 
 /// Specialized parser for HTML files.
-/// It uses a combination of regex for class extraction and a full HTML parser for complex mapping.
+///
+/// It uses a combination of regex for quick class extraction and the `scraper`
+/// crate for full structural analysis, enabling tag selector resolution.
 pub struct HtmlParser;
 
 impl ClassUsageParser for HtmlParser {
@@ -48,8 +50,10 @@ impl ClassUsageParser for HtmlParser {
 }
 
 impl HtmlParser {
-    /// Plans the conversion of an HTML file by analyzing its full structure.
-    /// This allows resolving tag selectors and parent-child relationships.
+    /// Plans the conversion of an HTML file by analyzing its full DOM structure.
+    ///
+    /// This allows resolving complex selectors like tag names (e.g., `div`),
+    /// parent-child relationships (e.g., `.parent > .child`), and siblings.
     pub fn plan_html(
         &self,
         source: &SourceFile,

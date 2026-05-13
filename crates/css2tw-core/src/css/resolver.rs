@@ -1,3 +1,9 @@
+//! Style Resolution module.
+//!
+//! This module is responsible for matching CSS rules against specific elements
+//! (simulating browser behavior) and resolving the final set of Tailwind classes
+//! while respecting CSS specificity and importance.
+
 use crate::css::parser::{RuleWithContext, TailwindMapping};
 use crate::tailwind::variant::TailwindVariant;
 use scraper::{ElementRef, Selector};
@@ -23,7 +29,10 @@ pub struct ResolvedElementStyle<'i> {
 
 impl<'i> ResolvedElementStyle<'i> {
     /// Converts the resolved styles into a space-separated string of Tailwind utility classes.
-    /// Handles conflict resolution based on CSS specificity.
+    ///
+    /// This method performs conflict resolution by grouping properties by their CSS
+    /// category and variants. It respects CSS specificity and the `!important` flag
+    /// to ensure that the generated Tailwind string accurately reflects the intended styles.
     pub fn to_tailwind_string(&self, rem_scale: f32) -> String {
         use crate::tailwind::mapping::map_property;
         use std::collections::{HashMap, HashSet};
@@ -126,7 +135,10 @@ impl<'i> ResolvedElementStyle<'i> {
         }
     }
 
-    /// Creates a Replacement structure from the resolved styles.
+    /// Creates a Replacement structure from the resolved styles for a specific source location.
+    ///
+    /// This combines the resolved Tailwind classes with diagnostic information and
+    /// any traces or suggestions generated during the resolution process.
     pub fn create_replacement(
         &self,
         span: crate::source::class_usage::Span,
@@ -169,6 +181,10 @@ impl<'i> ResolvedElementStyle<'i> {
 }
 
 /// Resolves CSS rules against HTML elements to determine which styles apply.
+///
+/// It iterates through all available style rules and checks if they match the
+/// given element using CSS selectors. It handles pseudo-classes and variants
+/// during the resolution process.
 pub struct StyleResolver<'i, 'a> {
     /// Reference to the style rules extracted from the stylesheet.
     pub style_rules: &'a [RuleWithContext<'a, 'i>],
@@ -209,6 +225,8 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                         continue;
                     }
 
+                    // Scraper expects "clean" selectors without complex CSS features like
+                    // pseudo-elements for its initial matching.
                     let clean_sel_str = self.clean_selector(selector);
                     let scraper_sel_res = Selector::parse(&clean_sel_str);
 

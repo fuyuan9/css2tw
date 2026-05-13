@@ -6,7 +6,10 @@ use crate::source::{
 use regex::Regex;
 
 /// A generic parser that uses regular expressions to find class names in any text file.
-/// This is a fallback parser for file types that don't have a specialized parser.
+///
+/// This serves as a robust fallback for file types that don't have a specialized
+/// AST-based parser. It handles both `class` and `className` attributes and
+/// intelligently skips content that looks like template tags (e.g., PHP, Jinja).
 pub struct GenericRegexParser;
 
 impl ClassUsageParser for GenericRegexParser {

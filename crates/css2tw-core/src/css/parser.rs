@@ -1,3 +1,9 @@
+//! CSS Parsing module using lightningcss.
+//!
+//! This module provides functionality to parse CSS strings into an AST,
+//! extract style rules (handling nested media queries), and map them
+//! to internal structures suitable for Tailwind resolution.
+
 use crate::error::Css2TwError;
 use crate::tailwind::variant::TailwindVariant;
 use lightningcss::printer::{Printer, PrinterOptions};
@@ -9,11 +15,15 @@ use lightningcss::traits::ToCss;
 use std::collections::HashMap;
 
 /// A wrapper around a lightningcss StyleSheet.
+/// It holds the lifetime of the parsed CSS AST.
 pub struct ParsedStylesheet<'a> {
     pub ast: StyleSheet<'a, 'a>,
 }
 
 /// Parses a CSS string into a lightningcss AST.
+///
+/// This handles the initial phase of conversion by transforming raw CSS text
+/// into a structured representation that can be queried and analyzed.
 pub fn parse_css(css_content: &str) -> Result<ParsedStylesheet<'_>, Css2TwError> {
     let options = ParserOptions::default();
     let ast = StyleSheet::parse(css_content, options)
@@ -23,18 +33,25 @@ pub fn parse_css(css_content: &str) -> Result<ParsedStylesheet<'_>, Css2TwError>
 }
 
 /// A rule accompanied by any variants inherited from parent blocks (like @media).
+///
+/// This is used to track the context in which a CSS rule appears,
+/// such as being inside a responsive breakpoint.
 pub struct RuleWithContext<'a, 'i> {
     pub rule: &'a StyleRule<'i>,
     pub context_variants: Vec<TailwindVariant>,
 }
 
 /// Extracts style rules from the stylesheet, including those nested in @media blocks.
+///
+/// It recursively traverses the AST to find all style rules, flattening
+/// nested structures like media queries into a linear list of rules with context.
 pub fn extract_style_rules<'i, 'a>(
     stylesheet: &'a ParsedStylesheet<'i>,
 ) -> Vec<RuleWithContext<'a, 'i>> {
     extract_rules_recursive(&stylesheet.ast.rules.0, Vec::new())
 }
 
+/// Internal helper to recursively traverse CSS rules and collect style rules with their variants.
 fn extract_rules_recursive<'i, 'a>(
     rules: &'a [CssRule<'i>],
     current_variants: Vec<TailwindVariant>,
@@ -69,6 +86,10 @@ fn extract_rules_recursive<'i, 'a>(
     result
 }
 
+/// Maps a CSS media query string to a corresponding Tailwind responsive variant.
+///
+/// Currently supports standard breakpoints (sm, md, lg, xl, 2xl) and
+/// generates arbitrary media variants for custom queries.
 fn map_media_query(query: &str) -> TailwindVariant {
     // Basic mapping for common Tailwind breakpoints
     // Support both traditional (min-width: ...) and modern (width >= ...) syntax
@@ -102,6 +123,9 @@ fn map_media_query(query: &str) -> TailwindVariant {
 }
 
 /// Extracts CSS custom properties (variables) from style rules.
+///
+/// Returns a map where keys are variable names (e.g., "--primary-color")
+/// and values are their assigned CSS values.
 pub fn extract_variables(style_rules: &[RuleWithContext]) -> HashMap<String, String> {
     let mut map = HashMap::new();
 
@@ -134,7 +158,11 @@ pub struct TailwindMapping<'i> {
     pub important: bool,
 }
 
-/// Builds a map of CSS class name to its properties and variants
+/// Builds a map of CSS class name to its properties and variants.
+///
+/// This is the primary lookup table used during conversion. It indexes
+/// properties by the class name they belong to, facilitating fast resolution
+/// when scanning source files for class usages.
 pub fn build_rule_map<'i, 'a>(
     style_rules: &'a [RuleWithContext<'a, 'i>],
 ) -> HashMap<String, Vec<TailwindMapping<'i>>> {

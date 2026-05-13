@@ -1,3 +1,8 @@
+//! Spacing mapping utilities.
+//!
+//! Handles the conversion of CSS length units (px, rem, %) to Tailwind's
+//! spacing scale or arbitrary values.
+
 use super::constants::DEFAULT_REM_PX;
 use lightningcss::printer::{Printer, PrinterOptions};
 use lightningcss::traits::ToCss as LightningToCss;

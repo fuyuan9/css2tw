@@ -127,6 +127,8 @@ enum Commands {
     Schema,
 }
 
+/// Main entry point for the CLI application.
+/// Parses arguments and dispatches to the appropriate command handler.
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
@@ -274,6 +276,14 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Orchestrates the entire migration process for a given path.
+///
+/// This involves:
+/// 1. Resolving configuration from CLI flags and JSON.
+/// 2. Scanning for source files and CSS files.
+/// 3. Reading CSS contents.
+/// 4. Iterating through source files, planning replacements, and optionally writing changes.
+/// 5. Generating and printing a comprehensive report.
 fn process_migration(
     path: &str,
     mode: &str,

@@ -1,3 +1,8 @@
+//! Error handling for the css2tw core.
+//!
+//! Provides a centralized error type for parsing, conversion,
+//! and configuration issues.
+
 use thiserror::Error;
 
 /// Errors that can occur during the CSS to Tailwind conversion process.

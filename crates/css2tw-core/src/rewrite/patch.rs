@@ -1,3 +1,8 @@
+//! Patching module.
+//!
+//! Handles the application of text replacements to source files,
+//! ensuring that modifications are applied correctly without overlapping.
+
 use crate::source::class_usage::Span;
 
 use crate::report::ConfidenceReport;

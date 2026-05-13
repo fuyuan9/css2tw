@@ -1,3 +1,8 @@
+//! Typography mapping utilities.
+//!
+//! Provides functions to map CSS font sizes and weights to their
+//! corresponding Tailwind utility classes.
+
 use lightningcss::printer::{Printer, PrinterOptions};
 use lightningcss::traits::ToCss as LightningToCss;
 
