@@ -373,7 +373,7 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::css::parser::{extract_style_rules, ParsedStylesheet};
+    use crate::css::parser::extract_style_rules;
     use lightningcss::properties::Property;
     use lightningcss::stylesheet::{ParserOptions, StyleSheet};
     use scraper::Html;
