@@ -112,11 +112,14 @@ fn format_spacing(prop: &str, value: &str) -> String {
 pub fn map_property(
     property: &Property,
     important: bool,
-    variant: &TailwindVariant,
+    variants: &[TailwindVariant],
     rem_scale: f32,
     variable_map: &HashMap<String, String>,
 ) -> Option<String> {
-    let prefix = variant.to_prefix();
+    let mut prefix = String::new();
+    for v in variants {
+        prefix.push_str(&v.to_prefix());
+    }
 
     // Resolve variables if any
     let mut prop_str = String::new();
@@ -497,15 +500,15 @@ mod tests {
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
 
-        let none_prop = &rules[0].declarations.declarations[0];
+        let none_prop = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(none_prop, false, &variant, 4.0, &vars),
+            map_property(none_prop, false, &[variant.clone()], 4.0, &vars),
             Some("hidden".to_string())
         );
 
-        let flex_prop = &rules[1].declarations.declarations[0];
+        let flex_prop = &rules[1].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(flex_prop, false, &variant, 4.0, &vars),
+            map_property(flex_prop, false, &[variant.clone()], 4.0, &vars),
             Some("flex".to_string())
         );
     }
@@ -521,15 +524,15 @@ mod tests {
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
 
-        let pt = &rules[0].declarations.declarations[0];
+        let pt = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(pt, false, &variant, 4.0, &vars),
+            map_property(pt, false, &[variant.clone()], 4.0, &vars),
             Some("pt-4".to_string())
         );
 
-        let mb = &rules[0].declarations.declarations[1];
+        let mb = &rules[0].rule.declarations.declarations[1];
         assert_eq!(
-            map_property(mb, false, &variant, 4.0, &vars),
+            map_property(mb, false, &[variant.clone()], 4.0, &vars),
             Some("mb-4".to_string())
         );
     }
@@ -545,10 +548,10 @@ mod tests {
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
 
-        let mr = &rules[0].declarations.declarations[0];
+        let mr = &rules[0].rule.declarations.declarations[0];
         // -15px at 16px/rem and rem-scale 4.0: (-15 / 16) * 4 = -3.75
         assert_eq!(
-            map_property(mr, false, &variant, 4.0, &vars),
+            map_property(mr, false, &[variant.clone()], 4.0, &vars),
             Some("-mr-3.75".to_string())
         );
     }
@@ -564,8 +567,8 @@ mod tests {
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
 
-        let bg = &rules[0].declarations.declarations[0];
-        let out = map_property(bg, false, &variant, 4.0, &vars).unwrap();
+        let bg = &rules[0].rule.declarations.declarations[0];
+        let out = map_property(bg, false, &[variant.clone()], 4.0, &vars).unwrap();
         // Should have underscores instead of spaces and NO double quotes
         assert_eq!(out, "bg-[url(../img.svg)]");
     }
@@ -581,12 +584,12 @@ mod tests {
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
 
-        let color = &rules[0].declarations.declarations[0];
-        let out = map_property(color, false, &variant, 4.0, &vars).unwrap();
+        let color = &rules[0].rule.declarations.declarations[0];
+        let out = map_property(color, false, &[variant.clone()], 4.0, &vars).unwrap();
         assert!(out.contains("#f00") || out.contains("red"));
 
-        let bg = &rules[0].declarations.declarations[1];
-        let out = map_property(bg, false, &variant, 4.0, &vars).unwrap();
+        let bg = &rules[0].rule.declarations.declarations[1];
+        let out = map_property(bg, false, &[variant.clone()], 4.0, &vars).unwrap();
         assert!(out.contains("bg-") && (out.contains("#f00") || out.contains("red")));
     }
 
@@ -600,9 +603,9 @@ mod tests {
 
         let variant = TailwindVariant::Hover;
         let vars = HashMap::new();
-        let pt = &rules[0].declarations.declarations[0];
+        let pt = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(pt, false, &variant, 4.0, &vars),
+            map_property(pt, false, &[variant.clone()], 4.0, &vars),
             Some("hover:pt-4".to_string())
         );
     }
@@ -617,18 +620,18 @@ mod tests {
 
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
-        let pt = &rules[0].declarations.declarations[0];
+        let pt = &rules[0].rule.declarations.declarations[0];
 
         assert_eq!(
-            map_property(pt, false, &variant, 4.0, &vars),
+            map_property(pt, false, &[variant.clone()], 4.0, &vars),
             Some("pt-4".to_string())
         );
         assert_eq!(
-            map_property(pt, false, &variant, 1.0, &vars),
+            map_property(pt, false, &[variant.clone()], 1.0, &vars),
             Some("pt-1".to_string())
         );
         assert_eq!(
-            map_property(pt, false, &variant, 5.0, &vars),
+            map_property(pt, false, &[variant.clone()], 5.0, &vars),
             Some("pt-5".to_string())
         );
     }
@@ -646,14 +649,14 @@ mod tests {
 
         // lightningcss might put important ones in important_declarations
         // But here we check map_property directly
-        let none_prop = &rules[0].declarations.important_declarations[0];
+        let none_prop = &rules[0].rule.declarations.important_declarations[0];
         assert_eq!(
-            map_property(none_prop, true, &variant, 4.0, &vars),
+            map_property(none_prop, true, &[variant.clone()], 4.0, &vars),
             Some("hidden!".to_string())
         );
 
-        let color_prop = &rules[0].declarations.important_declarations[1];
-        let out = map_property(color_prop, true, &variant, 4.0, &vars).unwrap();
+        let color_prop = &rules[0].rule.declarations.important_declarations[1];
+        let out = map_property(color_prop, true, &[variant.clone()], 4.0, &vars).unwrap();
         assert!(out.ends_with("!"));
         assert!(out.contains("text-"));
     }
@@ -669,8 +672,8 @@ mod tests {
         let variant = TailwindVariant::default();
         let vars = HashMap::new();
 
-        let transform = &rules[0].declarations.declarations[0];
-        let out_tr = map_property(transform, false, &variant, 4.0, &vars).unwrap();
+        let transform = &rules[0].rule.declarations.declarations[0];
+        let out_tr = map_property(transform, false, &[variant.clone()], 4.0, &vars).unwrap();
         // Should NOT contain spaces
         assert!(
             !out_tr.contains(' '),
@@ -679,8 +682,8 @@ mod tests {
         );
         assert!(out_tr.contains('_') || !out_tr.contains("translate(10px, 20px)"));
 
-        let border = &rules[0].declarations.declarations[1];
-        let out_bd = map_property(border, false, &variant, 4.0, &vars).unwrap();
+        let border = &rules[0].rule.declarations.declarations[1];
+        let out_bd = map_property(border, false, &[variant.clone()], 4.0, &vars).unwrap();
         assert!(!out_bd.contains(' '), "Border contains spaces: {}", out_bd);
         assert_eq!(out_bd, "border-[1px_solid_red]");
     }
@@ -697,23 +700,23 @@ mod tests {
         let vars = HashMap::new();
 
         // opacity: .5 -> opacity-[0.5]
-        let opacity = &rules[0].declarations.declarations[0];
+        let opacity = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(opacity, false, &variant, 4.0, &vars),
+            map_property(opacity, false, &[variant.clone()], 4.0, &vars),
             Some("opacity-[0.5]".to_string())
         );
 
         // margin: .5rem -> m-[0.5rem]
-        let margin = &rules[0].declarations.declarations[1];
+        let margin = &rules[0].rule.declarations.declarations[1];
         assert_eq!(
-            map_property(margin, false, &variant, 4.0, &vars),
+            map_property(margin, false, &[variant.clone()], 4.0, &vars),
             Some("m-[0.5rem]".to_string())
         );
 
         // padding: .25% -> p-[0.25%]
-        let padding = &rules[0].declarations.declarations[2];
+        let padding = &rules[0].rule.declarations.declarations[2];
         assert_eq!(
-            map_property(padding, false, &variant, 4.0, &vars),
+            map_property(padding, false, &[variant.clone()], 4.0, &vars),
             Some("p-[0.25%]".to_string())
         );
 
@@ -725,15 +728,15 @@ mod tests {
         };
         let rules_neg = crate::css::parser::extract_style_rules(&parsed_neg);
 
-        let margin_neg = &rules_neg[0].declarations.declarations[0];
+        let margin_neg = &rules_neg[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(margin_neg, false, &variant, 4.0, &vars),
+            map_property(margin_neg, false, &[variant.clone()], 4.0, &vars),
             Some("m-[-0.5rem]".to_string())
         );
 
-        let opacity_neg = &rules_neg[0].declarations.declarations[1];
+        let opacity_neg = &rules_neg[0].rule.declarations.declarations[1];
         assert_eq!(
-            map_property(opacity_neg, false, &variant, 4.0, &vars),
+            map_property(opacity_neg, false, &[variant.clone()], 4.0, &vars),
             Some("opacity-[-0.1]".to_string())
         );
     }
@@ -750,37 +753,37 @@ mod tests {
         let vars = HashMap::new();
 
         // 14px -> text-sm
-        let fs14 = &rules[0].declarations.declarations[0];
+        let fs14 = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(fs14, false, &variant, 4.0, &vars),
+            map_property(fs14, false, &[variant.clone()], 4.0, &vars),
             Some("text-sm".to_string())
         );
 
         // 16px -> text-base
-        let fs16 = &rules[0].declarations.declarations[1];
+        let fs16 = &rules[0].rule.declarations.declarations[1];
         assert_eq!(
-            map_property(fs16, false, &variant, 4.0, &vars),
+            map_property(fs16, false, &[variant.clone()], 4.0, &vars),
             Some("text-base".to_string())
         );
 
         // 12px -> text-xs
-        let fs12 = &rules[0].declarations.declarations[2];
+        let fs12 = &rules[0].rule.declarations.declarations[2];
         assert_eq!(
-            map_property(fs12, false, &variant, 4.0, &vars),
+            map_property(fs12, false, &[variant.clone()], 4.0, &vars),
             Some("text-xs".to_string())
         );
 
         // 15px -> text-[15px]
-        let fs15 = &rules[0].declarations.declarations[3];
+        let fs15 = &rules[0].rule.declarations.declarations[3];
         assert_eq!(
-            map_property(fs15, false, &variant, 4.0, &vars),
+            map_property(fs15, false, &[variant.clone()], 4.0, &vars),
             Some("text-[15px]".to_string())
         );
 
         // 1rem -> text-base
-        let fs1rem = &rules[0].declarations.declarations[4];
+        let fs1rem = &rules[0].rule.declarations.declarations[4];
         assert_eq!(
-            map_property(fs1rem, false, &variant, 4.0, &vars),
+            map_property(fs1rem, false, &[variant.clone()], 4.0, &vars),
             Some("text-base".to_string())
         );
     }

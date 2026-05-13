@@ -162,7 +162,7 @@ impl JsxParser {
     pub fn plan_jsx(
         &self,
         source: &SourceFile,
-        style_rules: &[&lightningcss::rules::style::StyleRule],
+        style_rules: &[crate::css::parser::RuleWithContext],
         rem_scale: f32,
         migrate_only_existing_classes: bool,
         include_tag_selectors: bool,

@@ -22,6 +22,8 @@ pub enum TailwindVariant {
     Placeholder,
     Marker,
     Selection,
+    /// Media queries, e.g. `max-[1120px]`.
+    Media(String),
     /// Arbitrary variants for anything not explicitly covered, e.g. `nth-[2n]`.
     Arbitrary(String),
 }
@@ -48,6 +50,7 @@ impl TailwindVariant {
             TailwindVariant::Placeholder => "placeholder:".to_string(),
             TailwindVariant::Marker => "marker:".to_string(),
             TailwindVariant::Selection => "selection:".to_string(),
+            TailwindVariant::Media(s) => format!("{}:", s),
             TailwindVariant::Arbitrary(s) => format!("{}:", s),
         }
     }

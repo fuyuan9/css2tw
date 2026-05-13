@@ -1,11 +1,11 @@
 use crate::error::Css2TwError;
 use crate::tailwind::variant::TailwindVariant;
-use cssparser::ToCss;
 use lightningcss::printer::{Printer, PrinterOptions};
 use lightningcss::properties::Property;
 use lightningcss::rules::style::StyleRule;
 use lightningcss::rules::CssRule;
 use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+use lightningcss::traits::ToCss;
 use std::collections::HashMap;
 
 /// A wrapper around a lightningcss StyleSheet.
@@ -22,25 +22,91 @@ pub fn parse_css(css_content: &str) -> Result<ParsedStylesheet<'_>, Css2TwError>
     Ok(ParsedStylesheet { ast })
 }
 
-/// Extracts simple style rules from the stylesheet.
-pub fn extract_style_rules<'i, 'a>(stylesheet: &'a ParsedStylesheet<'i>) -> Vec<&'a StyleRule<'i>> {
-    let mut style_rules = Vec::new();
+/// A rule accompanied by any variants inherited from parent blocks (like @media).
+pub struct RuleWithContext<'a, 'i> {
+    pub rule: &'a StyleRule<'i>,
+    pub context_variants: Vec<TailwindVariant>,
+}
 
-    for rule in &stylesheet.ast.rules.0 {
-        if let CssRule::Style(style_rule) = rule {
-            style_rules.push(style_rule);
+/// Extracts style rules from the stylesheet, including those nested in @media blocks.
+pub fn extract_style_rules<'i, 'a>(
+    stylesheet: &'a ParsedStylesheet<'i>,
+) -> Vec<RuleWithContext<'a, 'i>> {
+    extract_rules_recursive(&stylesheet.ast.rules.0, Vec::new())
+}
+
+fn extract_rules_recursive<'i, 'a>(
+    rules: &'a [CssRule<'i>],
+    current_variants: Vec<TailwindVariant>,
+) -> Vec<RuleWithContext<'a, 'i>> {
+    let mut result = Vec::new();
+
+    for rule in rules {
+        match rule {
+            CssRule::Style(style_rule) => {
+                result.push(RuleWithContext {
+                    rule: style_rule,
+                    context_variants: current_variants.clone(),
+                });
+            }
+            CssRule::Media(media_rule) => {
+                let mut next_variants = current_variants.clone();
+                let mut media_str = String::new();
+                {
+                    let mut printer = Printer::new(&mut media_str, PrinterOptions::default());
+                    let _ = media_rule.query.to_css(&mut printer);
+                }
+
+                let variant = map_media_query(&media_str);
+                next_variants.push(variant);
+
+                result.extend(extract_rules_recursive(&media_rule.rules.0, next_variants));
+            }
+            _ => {}
         }
     }
 
-    style_rules
+    result
+}
+
+fn map_media_query(query: &str) -> TailwindVariant {
+    // Basic mapping for common Tailwind breakpoints
+    // Support both traditional (min-width: ...) and modern (width >= ...) syntax
+    match query {
+        "(min-width: 640px)" | "(width >= 640px)" => TailwindVariant::Media("sm".to_string()),
+        "(min-width: 768px)" | "(width >= 768px)" => TailwindVariant::Media("md".to_string()),
+        "(min-width: 1024px)" | "(width >= 1024px)" => TailwindVariant::Media("lg".to_string()),
+        "(min-width: 1280px)" | "(width >= 1280px)" => TailwindVariant::Media("xl".to_string()),
+        "(min-width: 1536px)" | "(width >= 1536px)" => TailwindVariant::Media("2xl".to_string()),
+        _ => {
+            // Handle max-width or <= syntax
+            if query.contains("max-width:") || query.contains("<=") {
+                let re_max = regex::Regex::new(r"(?:max-width:\s*|width\s*<=\s*)([^)]+)").unwrap();
+                if let Some(cap) = re_max.captures(query) {
+                    let val = cap.get(1).unwrap().as_str().trim();
+                    return TailwindVariant::Media(format!("max-[{}]", val));
+                }
+            }
+            // Handle min-width or >= syntax for arbitrary values
+            if query.contains("min-width:") || query.contains(">=") {
+                let re_min = regex::Regex::new(r"(?:min-width:\s*|width\s*>=\s*)([^)]+)").unwrap();
+                if let Some(cap) = re_min.captures(query) {
+                    let val = cap.get(1).unwrap().as_str().trim();
+                    return TailwindVariant::Media(val.to_string());
+                }
+            }
+            // Fallback to arbitrary variant
+            TailwindVariant::Arbitrary(format!("[@media_{}]", query.replace(' ', "_")))
+        }
+    }
 }
 
 /// Extracts CSS custom properties (variables) from style rules.
-pub fn extract_variables(style_rules: &[&StyleRule]) -> HashMap<String, String> {
+pub fn extract_variables(style_rules: &[RuleWithContext]) -> HashMap<String, String> {
     let mut map = HashMap::new();
 
-    for rule in style_rules {
-        for decl in &rule.declarations.declarations {
+    for rule_ctx in style_rules {
+        for decl in &rule_ctx.rule.declarations.declarations {
             if let Property::Custom(_) = decl {
                 let mut full = String::new();
                 {
@@ -59,24 +125,25 @@ pub fn extract_variables(style_rules: &[&StyleRule]) -> HashMap<String, String> 
 }
 
 /// Represents a mapping from a CSS property to a potential Tailwind class,
-/// including any variants (like hover:) and the original selector's specificity.
+/// including any variants (like hover:, md:) and the original selector's specificity.
 #[derive(Debug, Clone)]
 pub struct TailwindMapping<'i> {
     pub property: Property<'i>,
-    pub variant: TailwindVariant,
+    pub variants: Vec<TailwindVariant>,
     pub specificity: u32,
     pub important: bool,
 }
 
 /// Builds a map of CSS class name to its properties and variants
 pub fn build_rule_map<'i, 'a>(
-    style_rules: &'a [&'a StyleRule<'i>],
+    style_rules: &'a [RuleWithContext<'a, 'i>],
 ) -> HashMap<String, Vec<TailwindMapping<'i>>> {
     let mut map: HashMap<String, Vec<TailwindMapping<'i>>> = HashMap::new();
 
-    for rule in style_rules {
+    for rule_ctx in style_rules {
+        let rule = rule_ctx.rule;
         let mut class_name = None;
-        let mut variant = TailwindVariant::default();
+        let mut variants = rule_ctx.context_variants.clone();
 
         // Currently we only support single-selector rules for simplicity
         if rule.selectors.0.is_empty() {
@@ -95,39 +162,39 @@ pub fn build_rule_map<'i, 'a>(
                 let (c, p) = from_dot.split_at(colon_pos);
                 // Map CSS pseudo-classes/elements to Tailwind variants
                 match p {
-                    ":hover" => variant = TailwindVariant::Hover,
-                    ":focus" => variant = TailwindVariant::Focus,
-                    ":active" => variant = TailwindVariant::Active,
-                    ":disabled" => variant = TailwindVariant::Disabled,
-                    ":checked" => variant = TailwindVariant::Checked,
-                    ":valid" => variant = TailwindVariant::Valid,
-                    ":invalid" => variant = TailwindVariant::Invalid,
-                    ":required" => variant = TailwindVariant::Required,
-                    ":first-child" => variant = TailwindVariant::First,
-                    ":last-child" => variant = TailwindVariant::Last,
-                    ":nth-child(odd)" | ":nth-child(2n+1)" => variant = TailwindVariant::Odd,
-                    ":nth-child(even)" | ":nth-child(2n)" => variant = TailwindVariant::Even,
-                    "::before" | ":before" => variant = TailwindVariant::Before,
-                    "::after" | ":after" => variant = TailwindVariant::After,
-                    "::placeholder" | ":placeholder" => variant = TailwindVariant::Placeholder,
-                    "::marker" => variant = TailwindVariant::Marker,
-                    "::selection" => variant = TailwindVariant::Selection,
+                    ":hover" => variants.push(TailwindVariant::Hover),
+                    ":focus" => variants.push(TailwindVariant::Focus),
+                    ":active" => variants.push(TailwindVariant::Active),
+                    ":disabled" => variants.push(TailwindVariant::Disabled),
+                    ":checked" => variants.push(TailwindVariant::Checked),
+                    ":valid" => variants.push(TailwindVariant::Valid),
+                    ":invalid" => variants.push(TailwindVariant::Invalid),
+                    ":required" => variants.push(TailwindVariant::Required),
+                    ":first-child" => variants.push(TailwindVariant::First),
+                    ":last-child" => variants.push(TailwindVariant::Last),
+                    ":nth-child(odd)" | ":nth-child(2n+1)" => variants.push(TailwindVariant::Odd),
+                    ":nth-child(even)" | ":nth-child(2n)" => variants.push(TailwindVariant::Even),
+                    "::before" | ":before" => variants.push(TailwindVariant::Before),
+                    "::after" | ":after" => variants.push(TailwindVariant::After),
+                    "::placeholder" | ":placeholder" => variants.push(TailwindVariant::Placeholder),
+                    "::marker" => variants.push(TailwindVariant::Marker),
+                    "::selection" => variants.push(TailwindVariant::Selection),
                     _ if p.starts_with(":nth-child(") => {
                         if let Some(val) = p
                             .strip_prefix(":nth-child(")
                             .and_then(|s| s.strip_suffix(')'))
                         {
-                            variant = TailwindVariant::Arbitrary(format!("nth-[{}]", val));
+                            variants.push(TailwindVariant::Arbitrary(format!("nth-[{}]", val)));
                         }
                     }
                     _ if p.starts_with("::") => {
                         if let Some(stripped) = p.strip_prefix("::") {
-                            variant = TailwindVariant::Arbitrary(format!("[&::{}]", stripped));
+                            variants.push(TailwindVariant::Arbitrary(format!("[&::{}]", stripped)));
                         }
                     }
                     _ if p.starts_with(':') => {
                         if let Some(stripped) = p.strip_prefix(':') {
-                            variant = TailwindVariant::Arbitrary(format!("[&:{}]", stripped));
+                            variants.push(TailwindVariant::Arbitrary(format!("[&:{}]", stripped)));
                         }
                     }
                     _ => {}
@@ -162,7 +229,7 @@ pub fn build_rule_map<'i, 'a>(
                 .iter()
                 .map(|prop| TailwindMapping {
                     property: prop.clone(),
-                    variant: variant.clone(),
+                    variants: variants.clone(),
                     specificity,
                     important: false,
                 });
@@ -174,7 +241,7 @@ pub fn build_rule_map<'i, 'a>(
                     .iter()
                     .map(|prop| TailwindMapping {
                         property: prop.clone(),
-                        variant: variant.clone(),
+                        variants: variants.clone(),
                         specificity,
                         important: true,
                     });
@@ -228,7 +295,6 @@ mod tests {
         assert!(map.contains_key("active"));
 
         // Test with a pseudo-class that has no closing paren but is still valid CSS (lexically)
-        // Note: StyleSheet::parse might fail on very broken CSS, so we test semantic robustness
         let css_partial = ".broken:nth-child(2n { color: red; }";
         if let Ok(ast) = StyleSheet::parse(css_partial, ParserOptions::default()) {
             let parsed = ParsedStylesheet { ast };
@@ -236,5 +302,36 @@ mod tests {
             let _map = build_rule_map(&rules);
             // Should not panic
         }
+    }
+
+    #[test]
+    fn test_media_query_extraction() {
+        let css = "
+            @media (max-width: 1120px) {
+                .test { color: red; }
+            }
+            @media (min-width: 768px) {
+                .test:hover { color: blue; }
+            }
+        ";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = ParsedStylesheet { ast: stylesheet };
+        let rules = extract_style_rules(&parsed);
+        let map = build_rule_map(&rules);
+
+        assert!(map.contains_key("test"));
+        let mappings = map.get("test").unwrap();
+
+        // Check for max-width: 1120px
+        assert!(mappings.iter().any(|m| m
+            .variants
+            .contains(&TailwindVariant::Media("max-[1120px]".to_string()))));
+
+        // Check for md:hover (min-width: 768px + hover)
+        assert!(mappings.iter().any(|m| {
+            m.variants
+                .contains(&TailwindVariant::Media("md".to_string()))
+                && m.variants.contains(&TailwindVariant::Hover)
+        }));
     }
 }

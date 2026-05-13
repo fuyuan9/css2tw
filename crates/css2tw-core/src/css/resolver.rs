@@ -1,6 +1,5 @@
-use crate::css::parser::TailwindMapping;
+use crate::css::parser::{RuleWithContext, TailwindMapping};
 use crate::tailwind::variant::TailwindVariant;
-use lightningcss::rules::style::StyleRule;
 use scraper::{ElementRef, Selector};
 
 /// Diagnostics for style resolution, explaining why things were matched or skipped.
@@ -31,7 +30,7 @@ impl<'i> ResolvedElementStyle<'i> {
 
         // Group properties by category and variant to resolve conflicts (specificity)
         let mut best_props: HashMap<
-            (String, crate::tailwind::variant::TailwindVariant),
+            (String, Vec<crate::tailwind::variant::TailwindVariant>),
             &TailwindMapping,
         > = HashMap::new();
 
@@ -44,7 +43,7 @@ impl<'i> ResolvedElementStyle<'i> {
                 name = name[..pos].to_string();
             }
 
-            let key = (name, mapping.variant.clone());
+            let key = (name, mapping.variants.clone());
             if let Some(existing) = best_props.get(&key) {
                 // Priority:
                 // 1. important flag
@@ -71,7 +70,7 @@ impl<'i> ResolvedElementStyle<'i> {
             if let Some(tw_class) = map_property(
                 &mapping.property,
                 mapping.important,
-                &mapping.variant,
+                &mapping.variants,
                 rem_scale,
                 &self.variable_map,
             ) {
@@ -172,7 +171,7 @@ impl<'i> ResolvedElementStyle<'i> {
 /// Resolves CSS rules against HTML elements to determine which styles apply.
 pub struct StyleResolver<'i, 'a> {
     /// Reference to the style rules extracted from the stylesheet.
-    pub style_rules: &'a [&'a StyleRule<'i>],
+    pub style_rules: &'a [RuleWithContext<'a, 'i>],
     /// Global map of CSS variables.
     pub variable_map: std::collections::HashMap<String, String>,
     /// Whether to include styles from tag selectors (without classes/IDs).
@@ -181,7 +180,7 @@ pub struct StyleResolver<'i, 'a> {
 
 impl<'i, 'a> StyleResolver<'i, 'a> {
     /// Creates a new StyleResolver and extracts variables from the provided rules.
-    pub fn new(style_rules: &'a [&'a StyleRule<'i>], include_tag_selectors: bool) -> Self {
+    pub fn new(style_rules: &'a [RuleWithContext<'a, 'i>], include_tag_selectors: bool) -> Self {
         let variable_map = crate::css::parser::extract_variables(style_rules);
         Self {
             style_rules,
@@ -196,7 +195,8 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
         let mut matched_selectors = Vec::new();
         let mut skipped_rules = Vec::new();
 
-        for rule in self.style_rules {
+        for rule_ctx in self.style_rules {
+            let rule = rule_ctx.rule;
             for selector in &rule.selectors.0 {
                 let mut sel_str = String::new();
                 let mut printer = lightningcss::printer::Printer::new(
@@ -216,13 +216,17 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                         Ok(scraper_sel) => {
                             if scraper_sel.matches(&element) {
                                 matched_selectors.push(sel_str.clone());
-                                let variant = self.extract_variant(selector);
+                                let mut variants = rule_ctx.context_variants.clone();
+                                let selector_variant = self.extract_variant(selector);
+                                if !matches!(selector_variant, TailwindVariant::None) {
+                                    variants.push(selector_variant);
+                                }
                                 let specificity = selector.specificity();
 
                                 for prop in &rule.declarations.declarations {
                                     resolved_props.push(TailwindMapping {
                                         property: prop.clone(),
-                                        variant: variant.clone(),
+                                        variants: variants.clone(),
                                         specificity,
                                         important: false,
                                     });
@@ -230,7 +234,7 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
                                 for prop in &rule.declarations.important_declarations {
                                     resolved_props.push(TailwindMapping {
                                         property: prop.clone(),
-                                        variant: variant.clone(),
+                                        variants: variants.clone(),
                                         specificity,
                                         important: true,
                                     });
@@ -369,6 +373,7 @@ impl<'i, 'a> StyleResolver<'i, 'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::css::parser::{extract_style_rules, ParsedStylesheet};
     use lightningcss::properties::Property;
     use lightningcss::stylesheet::{ParserOptions, StyleSheet};
     use scraper::Html;
@@ -453,7 +458,7 @@ mod tests {
         let css = ".btn:hover { color: green; } .btn::before { padding: 5px; }";
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
-        let rules = crate::css::parser::extract_style_rules(&parsed);
+        let rules = extract_style_rules(&parsed);
         let resolver = StyleResolver::new(&rules, true);
 
         let html = Html::parse_fragment("<button class=\"btn\"></button>");
@@ -469,14 +474,14 @@ mod tests {
         let hover_mapping = resolved
             .properties
             .iter()
-            .find(|m| matches!(m.variant, TailwindVariant::Hover))
+            .find(|m| m.variants.contains(&TailwindVariant::Hover))
             .unwrap();
         assert!(matches!(hover_mapping.property, Property::Color(_)));
 
         let before_mapping = resolved
             .properties
             .iter()
-            .find(|m| matches!(m.variant, TailwindVariant::Before))
+            .find(|m| m.variants.contains(&TailwindVariant::Before))
             .unwrap();
         assert!(matches!(before_mapping.property, Property::Padding(_)));
     }

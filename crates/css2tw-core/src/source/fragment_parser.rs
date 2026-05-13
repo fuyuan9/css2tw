@@ -60,7 +60,7 @@ impl FragmentParser {
     pub fn plan_fragment(
         &self,
         source: &SourceFile,
-        style_rules: &[&lightningcss::rules::style::StyleRule],
+        style_rules: &[crate::css::parser::RuleWithContext],
         rem_scale: f32,
         migrate_only_existing_classes: bool,
         include_tag_selectors: bool,
@@ -167,8 +167,8 @@ impl FragmentParser {
                                 }
                             } else {
                                 // Keep all original classes that were NOT in the CSS
-                                let was_matched = style_rules.iter().any(|r| {
-                                    r.selectors.0.iter().any(|s| {
+                                let was_matched = style_rules.iter().any(|r_ctx| {
+                                    r_ctx.rule.selectors.0.iter().any(|s| {
                                         s.iter().any(|comp| match comp {
                                             lightningcss::selector::Component::Class(c) => {
                                                 c.0.as_ref() == part
