@@ -12,9 +12,11 @@
 - **🛡️ Safe & Deterministic:** Prioritizes correctness. Unsupported or unsafe CSS conversions are explicitly reported rather than silently or incorrectly transformed.
 - **🤖 Agent-Native:** First-class support for structured JSON (`--json`) outputs and JSON Schema (`css2tw schema`), specifically designed to be consumed by AI coding agents.
 - **⚡ High Performance:** Built in Rust. Utilizes parallel file processing (`rayon`) and extremely fast parsers (`lightningcss` for CSS, `oxc` for JSX/TSX).
+- **🎨 Tailwind v4 Support:** Implements support for the latest Tailwind CSS v4 syntax, including the `!` suffix for `!important` declarations and optimized arbitrary value handling.
 - **🧩 Template Fragment Support:** Robust parsing for fragmented template files (PHP, Blade, Jinja2, etc.) while protecting template tags (e.g., `{{ ... }}`).
 - **📝 Conversion Tracing:** Provides a detailed "trace" for each conversion, explaining exactly which CSS rules led to the resulting Tailwind classes.
 - **🔍 Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
+- **🚫 Global Selector Exclusion:** Automatically ignores `*` and `:root` selectors to keep utility classes clean and focus on component-level styles.
 - **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via CLI or JSON config.
 - **💉 Explicit CSS Injection:** To ensure deterministic behavior, CSS definitions must be explicitly provided. Automatic scanning is disabled by default to prioritize control.
 
