@@ -278,29 +278,6 @@ cargo xtask bench-uikit         # UIkit 3.21
 cargo xtask bench-semantic      # Semantic UI 2.9
 ```
 
-#### Latest Benchmark Results
-
-| Framework | Version | Safe Conversions | Total Classes | Note |
-| :--- | :--- | :--- | :--- | :--- |
-| **Bootstrap** | v5.3 | **100.00%** | 1,909 | Perfect conversion with Tailwind v4 |
-| **Bootstrap** | v4.6 | **100.00%** | 1,326 | Perfect conversion |
-| **Bootstrap** | v3.4 | **100.00%** | 705 | Perfect conversion |
-| **Bulma** | v0.9 | **100.00%** | 543 | Perfect conversion |
-| **Bulma** | v1.0 | **100.00%** | 1,772 | Perfect conversion with CSS variables |
-| **Foundation** | v6.9 | **100.00%** | 299 | Perfect conversion |
-| **Skeleton** | v2.0 | **100.00%** | 37 | Perfect conversion |
-| **UIkit** | v3.21 | **100.00%** | 648 | Perfect conversion |
-| **Semantic UI** | v2.9 | **100.00%** | 67 | Tested with Fomantic-UI fork |
-
-## Understanding "Partial" Results
-
-With the latest version of `css2tw`, most standard CSS properties and variables are now converted with 100% confidence (**Safe**). However, you might still see "Partial" results in certain complex scenarios:
-
-1. **Ambiguous Selectors**: When a single class name is defined across multiple CSS rules or files with conflicting or additive properties. The tool merges these, but marks them for review to ensure the cascade order is preserved correctly.
-2. **Malformed or Unparseable CSS**: If a property value is syntactically invalid or uses proprietary non-standard syntax that the underlying parser cannot interpret, that specific property might be omitted while others are converted.
-3. **Complex Cascade Review**: Cases where the tool successfully generates Tailwind output but detects high-risk CSS patterns that might behave differently at runtime depending on the final utility order.
-
-In essence, a "Partial" result is no longer a sign of tool limitation, but a **proactive alert** suggesting manual verification of your CSS architecture.
 
 ### Local Execution
 ```bash
@@ -346,13 +323,37 @@ A conversion is considered "Safe" only if:
 
 ### Benchmark Results (Latest)
 
-| Framework | Files | Safe Converted | Unsafe Detected | Manual Review | Confidence (>=0.95) |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Bootstrap 5** | 120 | 1,840 | 62 | 7 | 96.5% |
-| **Bulma 1.0** | 85 | 1,650 | 45 | 12 | 97.2% |
-| **Foundation** | 92 | 280 | 12 | 7 | 93.4% |
+| Framework | Version | Total Classes | Safe Converted | Unsafe/Partial | Manual Review | Confidence (>=0.95) | Note |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **Bootstrap** | v5.3 | 1,909 | 1,909 | 0 | 0 | 100.0% | Perfect conversion with Tailwind v4 |
+| **Bootstrap** | v4.6 | 1,326 | 1,326 | 0 | 0 | 100.0% | Perfect conversion |
+| **Bootstrap** | v3.4 | 705 | 705 | 0 | 0 | 100.0% | Perfect conversion |
+| **Bulma** | v1.0 | 1,772 | 1,772 | 0 | 0 | 100.0% | Perfect conversion with CSS variables |
+| **Bulma** | v0.9 | 543 | 543 | 0 | 0 | 100.0% | Perfect conversion |
+| **Foundation** | v6.9 | 299 | 299 | 0 | 0 | 100.0% | Perfect conversion |
+| **Skeleton** | v2.0 | 37 | 37 | 0 | 0 | 100.0% | Perfect conversion |
+| **UIkit** | v3.21 | 648 | 648 | 0 | 0 | 100.0% | Perfect conversion |
+| **Semantic UI** | v2.9 | 67 | 67 | 0 | 0 | 100.0% | Tested with Fomantic-UI fork |
 
-*Note: "Safe Converted" refers to static classes successfully mapped with >= 0.95 confidence.*
+*Note: "Safe Converted" refers to static classes successfully mapped with 100% confidence. "Confidence (>=0.95)" represents the percentage of classes meeting or exceeding the high-confidence threshold.*
+
+### Understanding "Partial" Results
+
+With the latest version of `css2tw`, most standard CSS properties and variables are now converted with 100% confidence (**Safe**). However, you might still see "Partial" results in certain complex scenarios:
+
+1. **Ambiguous Selectors**: When a single class name is defined across multiple CSS rules or files with conflicting or additive properties. The tool merges these, but marks them for review to ensure the cascade order is preserved correctly.
+2. **Malformed or Unparseable CSS**: If a property value is syntactically invalid or uses proprietary non-standard syntax that the underlying parser cannot interpret, that specific property might be omitted while others are converted.
+3. **Complex Cascade Review**: Cases where the tool successfully generates Tailwind output but detects high-risk CSS patterns that might behave differently at runtime depending on the final utility order.
+
+In essence, a "Partial" result is no longer a sign of tool limitation, but a **proactive alert** suggesting manual verification of your CSS architecture.
+
+### Understanding "Unsafe" Results
+
+Results marked as **"Unsafe"** (confidence < 0.80) indicate scenarios where a deterministic mechanical migration is not possible or carries high risk. These require human developer review:
+
+1. **Dynamic Bindings & Logic**: Any class usage that depends on runtime JavaScript logic (`clsx`, ternary operators, or state-based injection) is flagged as unsafe to prevent breaking application logic.
+2. **Complex Combinators**: Selectors using advanced combinators (e.g., `+`, `~`, `>`) are often excluded because their behavior depends on the exact DOM structure, which may change during a migration.
+3. **Non-Standard or Proprietary CSS**: Usage of vendor-specific prefixes or non-standard CSS properties that cannot be safely mapped to a standard Tailwind utility or arbitrary property.
 
 ---
 
