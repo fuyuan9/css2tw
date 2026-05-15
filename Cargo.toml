@@ -2,7 +2,8 @@
 members = [
     "crates/css2tw-core",
     "crates/css2tw-cli",
-    "crates/xtask"
+    "crates/xtask",
+    "crates/css2tw-mcp"
 ]
 resolver = "2"
 

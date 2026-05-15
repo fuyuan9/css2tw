@@ -147,6 +147,21 @@ enum Commands {
         #[arg(long, default_value = "true")]
         recursive: bool,
     },
+    /// Visual Regression Testing utilities
+    Vrt {
+        #[command(subcommand)]
+        action: VrtAction,
+    },
+}
+
+#[derive(clap::Subcommand, Debug, Clone)]
+pub enum VrtAction {
+    /// Initialize a Playwright-based VRT setup in the current directory
+    Init {
+        /// Target URL for capture (e.g., http://localhost:3000)
+        #[arg(long, default_value = "http://localhost:3000")]
+        url: String,
+    },
 }
 
 /// Main entry point for the CLI application.
@@ -421,6 +436,82 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         }
+        Commands::Vrt { action } => match action {
+            VrtAction::Init { url } => {
+                println!(
+                    "{} Initializing Visual Regression setup...",
+                    "VRT".bold().blue()
+                );
+
+                let _ = std::fs::create_dir_all("tests-vrt");
+
+                let config_content = format!(
+                    r#"import {{ defineConfig, devices }} from '@playwright/test';
+
+export default defineConfig({{
+  testDir: './tests-vrt',
+  fullyParallel: true,
+  reporter: 'html',
+  use: {{
+    baseURL: '{}',
+    trace: 'on-first-retry',
+  }},
+  projects: [
+    {{
+      name: 'chromium',
+      use: {{ ...devices['Desktop Chrome'] }},
+    }},
+  ],
+}});
+"#,
+                    url
+                );
+
+                let test_content = format!(
+                    r#"import {{ test, expect }} from '@playwright/test';
+
+test('Visual Regression Comparison', async ({{ page }}) => {{
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  // Baseline snapshot
+  // Run with `npx playwright test -c playwright.vrt.config.ts --update-snapshots` first
+  // Then run migration, and run `npx playwright test -c playwright.vrt.config.ts` again to compare
+  await expect(page).toHaveScreenshot('site-baseline.png', {{
+    fullPage: true,
+    maxDiffPixelRatio: 0.01,
+  }});
+}});
+"#
+                );
+
+                std::fs::write("playwright.vrt.config.ts", config_content)?;
+                std::fs::write("tests-vrt/migrate-vrt.spec.ts", test_content)?;
+
+                println!(
+                    "{} Created playwright.vrt.config.ts and tests-vrt/migrate-vrt.spec.ts",
+                    "Success".green().bold()
+                );
+                println!("\nNext steps for VRT:");
+                println!(
+                    "1. Install Playwright: {}",
+                    "npm install -D @playwright/test".cyan()
+                );
+                println!("2. Start your dev server (e.g. at {})", url.bold());
+                println!(
+                    "3. Capture baseline:   {}",
+                    "npx playwright test -c playwright.vrt.config.ts --update-snapshots".cyan()
+                );
+                println!(
+                    "4. Run migration:      {}",
+                    "css2tw convert . --write".cyan()
+                );
+                println!(
+                    "5. Compare results:    {}",
+                    "npx playwright test -c playwright.vrt.config.ts".cyan()
+                );
+            }
+        },
     }
 
     Ok(())
