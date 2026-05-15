@@ -144,7 +144,7 @@ fn publish(dry_run: bool) -> Result<(), DynError> {
 }
 
 fn run_npm_publish(dir: &Path, dry_run: bool) -> Result<(), DynError> {
-    let mut args = vec!["publish"];
+    let mut args = vec!["publish", "--access", "public"];
     if dry_run {
         args.push("--dry-run");
     }

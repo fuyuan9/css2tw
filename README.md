@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-v1.75+-orange.svg)](https://www.rust-lang.org/)
-[![NPM Version](https://img.shields.io/npm/v/css2tw.svg)](https://www.npmjs.com/package/css2tw)
+[![NPM Version](https://img.shields.io/npm/v/@fuyuan9/css2tw.svg)](https://www.npmjs.com/package/@fuyuan9/css2tw)
 
 **css2tw** is an AI-native Rust CLI tool designed to mechanically migrate legacy CSS class usage into Tailwind CSS utility classes. It prioritizes safety, performance, and seamless integration with AI coding agents.
 
@@ -221,13 +221,13 @@ Refer to [docs/agent-prompts.md](docs/agent-prompts.md) for detailed integration
 
 ## 📦 Distribution (NPM)
 
-`css2tw` is available as a lightweight NPM package. It uses the **Optional Dependencies** pattern to deliver prebuilt native binaries for your specific platform, eliminating the need for a local Rust toolchain.
+`@fuyuan9/css2tw` is available as a lightweight NPM package. It uses the **Optional Dependencies** pattern to deliver prebuilt native binaries for your specific platform, eliminating the need for a local Rust toolchain.
 
-- `css2tw`: The main CLI wrapper.
-- `css2tw-darwin-arm64`: Apple Silicon.
-- `css2tw-darwin-x64`: Intel Mac.
-- `css2tw-linux-x64`: Linux.
-- `css2tw-win32-x64`: Windows.
+- `@fuyuan9/css2tw`: The main CLI wrapper.
+- `@fuyuan9/css2tw-darwin-arm64`: Apple Silicon.
+- `@fuyuan9/css2tw-darwin-x64`: Intel Mac.
+- `@fuyuan9/css2tw-linux-x64`: Linux.
+- `@fuyuan9/css2tw-win32-x64`: Windows.
 
 ---
 

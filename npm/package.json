@@ -1,7 +1,10 @@
 {
-  "name": "css2tw",
-  "version": "0.1.0",
+  "name": "@fuyuan9/css2tw",
+  "version": "0.1.1",
   "description": "A CLI tool to convert CSS classes to Tailwind utilities",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "css2tw": "bin/css2tw.js"
   },
@@ -17,9 +20,9 @@
   "author": "fuyuan9",
   "license": "MIT",
   "optionalDependencies": {
-    "css2tw-darwin-arm64": "0.1.0",
-    "css2tw-darwin-x64": "0.1.0",
-    "css2tw-linux-x64": "0.1.0",
-    "css2tw-win32-x64": "0.1.0"
+    "@fuyuan9/css2tw-darwin-arm64": "0.1.1",
+    "@fuyuan9/css2tw-darwin-x64": "0.1.1",
+    "@fuyuan9/css2tw-linux-x64": "0.1.1",
+    "@fuyuan9/css2tw-win32-x64": "0.1.1"
   }
 }

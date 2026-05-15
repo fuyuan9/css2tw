@@ -1,7 +1,10 @@
 {
-  "name": "css2tw-darwin-arm64",
-  "version": "0.1.0",
+  "name": "@fuyuan9/css2tw-darwin-arm64",
+  "version": "0.1.1",
   "description": "Prebuilt binary for css2tw on darwin-arm64",
+  "publishConfig": {
+    "access": "public"
+  },
   "os": [
     "darwin"
   ],
