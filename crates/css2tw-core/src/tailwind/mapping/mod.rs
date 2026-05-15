@@ -315,7 +315,11 @@ pub fn map_property(
                         (Some(rv), Some(cv)) => Some(format!("{} {}", rv, cv)),
                         (Some(rv), None) => Some(rv),
                         (None, Some(cv)) => Some(cv),
-                        _ => Some(format!("gap-[{}_{}]", escape_arbitrary_value(&row), escape_arbitrary_value(&col))),
+                        _ => Some(format!(
+                            "gap-[{}_{}]",
+                            escape_arbitrary_value(&row),
+                            escape_arbitrary_value(&col)
+                        )),
                     }
                 }
             } else {
@@ -1155,7 +1159,10 @@ pub fn map_property(
                 match dest.as_str() {
                     "visible" => Some("backface-visible".to_string()),
                     "hidden" => Some("backface-hidden".to_string()),
-                    _ => Some(format!("[backface-visibility:{}]", escape_arbitrary_value(&dest))),
+                    _ => Some(format!(
+                        "[backface-visibility:{}]",
+                        escape_arbitrary_value(&dest)
+                    )),
                 }
             } else {
                 None
