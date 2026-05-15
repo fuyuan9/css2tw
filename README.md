@@ -242,6 +242,8 @@ cargo xtask bench-skeleton      # Skeleton 2.0
 | **Bulma** | v1.0 | **100.00%** | 1,772 | Perfect conversion with CSS variables |
 | **Foundation** | v6.9 | **100.00%** | 299 | Perfect conversion |
 | **Skeleton** | v2.0 | **100.00%** | 37 | Perfect conversion |
+| **UIkit** | v3.21 | **100.00%** | 648 | Perfect conversion |
+| **Semantic UI** | v2.9 | **100.00%** | 67 | Tested with Fomantic-UI fork |
 
 ## Understanding "Partial" Results
 
