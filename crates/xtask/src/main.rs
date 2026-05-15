@@ -281,6 +281,34 @@ fn run_benchmark(name: &str, css_path: &Path) -> Result<(), DynError> {
                     safe_conversions += 1;
                 } else if rep.confidence.score > 0.0 {
                     partial_conversions += 1;
+
+                    if rep.confidence.score < 1.0 {
+                        for reason in &rep.confidence.reasons {
+                            match reason {
+                                css2tw_core::report::ConfidenceReason::VariableResolved(v) => {
+                                    *failure_reasons
+                                        .entry(format!("Partial (Var): {}", v))
+                                        .or_insert(0) += 1;
+                                }
+                                css2tw_core::report::ConfidenceReason::PartialMatch(_) => {
+                                    *failure_reasons
+                                        .entry("Partial (PartialMatch)".to_string())
+                                        .or_insert(0) += 1;
+                                }
+                                css2tw_core::report::ConfidenceReason::LowConfidenceProperty(p) => {
+                                    *failure_reasons
+                                        .entry(format!("Partial (LowConf): {}", p))
+                                        .or_insert(0) += 1;
+                                }
+                                _ => {
+                                    *failure_reasons
+                                        .entry("Partial (Other)".to_string())
+                                        .or_insert(0) += 1;
+                                }
+                            }
+                        }
+                    }
+
                     // Track unmapped properties for reporting
                     for t in &rep.trace {
                         if t.starts_with("Unmapped properties: ") {

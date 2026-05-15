@@ -235,13 +235,13 @@ cargo xtask bench-skeleton      # Skeleton 2.0
 
 | Framework | Version | Safe Conversions | Total Classes | Note |
 | :--- | :--- | :--- | :--- | :--- |
-| **Bootstrap** | v5.3 | **83.29%** | 1,909 | Modern CSS with heavy variable usage |
-| **Bootstrap** | v4.6 | **100.00%** | 1,326 | Excellent compatibility |
+| **Bootstrap** | v5.3 | **100.00%** | 1,909 | Perfect conversion with Tailwind v4 |
+| **Bootstrap** | v4.6 | **100.00%** | 1,326 | Perfect conversion |
 | **Bootstrap** | v3.4 | **100.00%** | 705 | Perfect conversion |
-| **Bulma** | v0.9 | **99.82%** | 543 | High compatibility |
-| **Bulma** | v1.0 | **26.75%** | 1,772 | Deeply nested CSS variable dependencies |
+| **Bulma** | v0.9 | **100.00%** | 543 | Perfect conversion |
+| **Bulma** | v1.0 | **100.00%** | 1,772 | Perfect conversion with CSS variables |
 | **Foundation** | v6.9 | **100.00%** | 299 | Perfect conversion |
-| **Skeleton** | v2.0 | **100.00%** | 37 | Minimalist baseline |
+| **Skeleton** | v2.0 | **100.00%** | 37 | Perfect conversion |
 
 ### Local Execution
 ```bash

@@ -315,7 +315,7 @@ pub fn map_property(
                         (Some(rv), Some(cv)) => Some(format!("{} {}", rv, cv)),
                         (Some(rv), None) => Some(rv),
                         (None, Some(cv)) => Some(cv),
-                        _ => None,
+                        _ => Some(format!("gap-[{}_{}]", escape_arbitrary_value(&row), escape_arbitrary_value(&col))),
                     }
                 }
             } else {
@@ -400,7 +400,7 @@ pub fn map_property(
                     "normal" => Some("break-normal".to_string()),
                     "break-all" => Some("break-all".to_string()),
                     "keep-all" => Some("break-keep".to_string()),
-                    _ => None,
+                    _ => Some(format!("break-[{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -413,7 +413,7 @@ pub fn map_property(
                 match dest.as_str() {
                     "anywhere" | "break-word" => Some("break-words".to_string()),
                     "normal" => Some("break-normal".to_string()),
-                    _ => None,
+                    _ => Some(format!("break-[{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -456,7 +456,7 @@ pub fn map_property(
                     "padding-box" => Some("bg-clip-padding".to_string()),
                     "content-box" => Some("bg-clip-content".to_string()),
                     "text" => Some("bg-clip-text".to_string()),
-                    _ => None,
+                    _ => Some(format!("bg-clip-[{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -473,7 +473,7 @@ pub fn map_property(
                     "repeat-y" => Some("bg-repeat-y".to_string()),
                     "round" => Some("bg-repeat-round".to_string()),
                     "space" => Some("bg-repeat-space".to_string()),
-                    _ => None,
+                    _ => Some(format!("bg-repeat-[{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -1081,7 +1081,7 @@ pub fn map_property(
                     "both" => Some("resize".to_string()),
                     "horizontal" => Some("resize-x".to_string()),
                     "vertical" => Some("resize-y".to_string()),
-                    _ => None,
+                    _ => Some(format!("resize-[{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -1155,7 +1155,7 @@ pub fn map_property(
                 match dest.as_str() {
                     "visible" => Some("backface-visible".to_string()),
                     "hidden" => Some("backface-hidden".to_string()),
-                    _ => None,
+                    _ => Some(format!("[backface-visibility:{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -1266,7 +1266,7 @@ pub fn map_property(
                     "break-all" => Some("break-all".to_string()),
                     "keep-all" => Some("break-keep".to_string()),
                     "break-word" => Some("break-words".to_string()),
-                    _ => None,
+                    _ => Some(format!("[word-break:{}]", escape_arbitrary_value(prop_val))),
                 },
                 "align-content" => match prop_val {
                     "flex-start" | "start" => Some("content-start".to_string()),
@@ -1329,7 +1329,7 @@ pub fn map_property(
                     } else if prop_val == "content-box" {
                         Some("box-content".to_string())
                     } else {
-                        None
+                        Some(format!("[box-sizing:{}]", escape_arbitrary_value(prop_val)))
                     }
                 }
                 "text-align" => match prop_val {

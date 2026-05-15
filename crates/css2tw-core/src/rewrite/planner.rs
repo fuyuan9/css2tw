@@ -102,7 +102,8 @@ impl ConversionPlanner {
             );
             if mapping.property.to_css(&mut printer, false).is_ok() && dest.contains("var(") {
                 confidence_reasons.push(crate::report::ConfidenceReason::VariableResolved(dest));
-                score *= 0.9;
+                // In Tailwind v4 context, keeping variables in arbitrary values is considered a safe and valid conversion.
+                score *= 1.0;
             }
         }
 
