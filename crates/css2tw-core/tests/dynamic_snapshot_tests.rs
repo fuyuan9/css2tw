@@ -48,7 +48,7 @@ fn test_dynamic_pattern_snapshots() {
         let replacements = converter.plan_file(&source, &style_rules).unwrap();
 
         // Collect diagnostics and other info for snapshot
-        let mut snapshot_data = serde_json::json!({
+        let snapshot_data = serde_json::json!({
             "file": file_name,
             "unconverted_count": replacements.iter().filter(|r| r.after.is_empty()).count(),
             "diagnostics": replacements.iter()

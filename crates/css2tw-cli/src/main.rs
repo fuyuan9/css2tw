@@ -465,7 +465,7 @@ fn main() -> anyhow::Result<()> {
                 println!("{:<25} {}", "Total Files:", result.files_total);
                 println!("{:<25} {}ms", "Total Time:", result.total_time_ms);
                 println!("{:<25} {}", "Total Classes:", total_classes);
-                println!("");
+                println!();
                 println!(
                     "{:<25} {} ({:.1}%)",
                     "Safe Converted:",

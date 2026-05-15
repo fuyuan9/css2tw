@@ -194,17 +194,15 @@ impl<'a, 'i> JsxPlanVisitor<'i, 'a> {
                     crate::report::FailureReason::RuntimeClassGeneration,
                 );
             }
-            Expression::TemplateLiteral(lit) => {
-                if !lit.expressions.is_empty() {
-                    self.add_dynamic_replacement(
-                        lit.span,
-                        format!(
-                            "Dynamic template literal assigned to class-like variable '{}'",
-                            name
-                        ),
-                        crate::report::FailureReason::DynamicTemplateLiteral,
-                    );
-                }
+            Expression::TemplateLiteral(lit) if !lit.expressions.is_empty() => {
+                self.add_dynamic_replacement(
+                    lit.span,
+                    format!(
+                        "Dynamic template literal assigned to class-like variable '{}'",
+                        name
+                    ),
+                    crate::report::FailureReason::DynamicTemplateLiteral,
+                );
             }
             Expression::ConditionalExpression(cond) => {
                 self.add_dynamic_replacement(
