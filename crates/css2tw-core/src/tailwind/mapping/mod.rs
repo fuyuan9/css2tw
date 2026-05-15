@@ -137,9 +137,18 @@ pub fn map_property(
 
     let resolved_str = resolve_vars(&prop_str, variable_map);
 
-    // If it's a CSS variable definition, we don't map it to tailwind directly
+    // If it's a CSS variable definition, we map it to an arbitrary property class
     if prop_str.starts_with("--") {
-        return None;
+        let (name, val) = prop_str
+            .split_once(':')
+            .map(|(n, v)| (n.trim(), v.trim().trim_end_matches(';')))
+            .unwrap_or((prop_str.trim(), ""));
+        return Some(format!(
+            "{}[{}:{}]",
+            prefix,
+            name,
+            escape_arbitrary_value(val)
+        ));
     }
 
     // If variables were resolved, we use the resolved string for arbitrary values
@@ -685,6 +694,60 @@ pub fn map_property(
                 None
             }
         }
+        Property::AspectRatio(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "auto" => Some("aspect-auto".to_string()),
+                    "1 / 1" | "1/1" => Some("aspect-square".to_string()),
+                    "16 / 9" | "16/9" => Some("aspect-video".to_string()),
+                    _ => Some(format!("aspect-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::FontStyle(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "italic" => Some("italic".to_string()),
+                    "normal" => Some("not-italic".to_string()),
+                    _ => Some(format!("[font-style:{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::ListStyleType(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "none" => Some("list-none".to_string()),
+                    "disc" => Some("list-disc".to_string()),
+                    "decimal" => Some("list-decimal".to_string()),
+                    _ => Some(format!("list-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::ListStylePosition(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "inside" => Some("list-inside".to_string()),
+                    "outside" => Some("list-outside".to_string()),
+                    _ => Some(format!("list-[position:{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
         _ => {
             let (prop_name, prop_val) = prop_str
                 .split_once(':')
@@ -808,6 +871,20 @@ pub fn map_property(
                     "scroll" => Some("overflow-y-scroll".to_string()),
                     _ => Some(format!("overflow-y-[{}]", escape_arbitrary_value(prop_val))),
                 },
+                "table-layout" => match prop_val {
+                    "auto" => Some("table-auto".to_string()),
+                    "fixed" => Some("table-fixed".to_string()),
+                    _ => Some(format!("table-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "caption-side" => match prop_val {
+                    "top" => Some("caption-top".to_string()),
+                    "bottom" => Some("caption-bottom".to_string()),
+                    _ => Some(format!("caption-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "text-underline-offset" => Some(format!(
+                    "underline-offset-[{}]",
+                    escape_arbitrary_value(prop_val)
+                )),
                 "visibility" => match prop_val {
                     "visible" => Some("visible".to_string()),
                     "hidden" | "collapse" => Some("invisible".to_string()),
@@ -1261,5 +1338,91 @@ mod tests {
         let out_ad = map_property(ad, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         println!("out_ad: {}", out_ad);
         assert_eq!(out_ad, "[animation-duration:2s]".to_string());
+    }
+
+    #[test]
+    fn test_map_new_properties_and_vars() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css = ".x { --bs-bg-opacity: 0.5; caption-side: top; aspect-ratio: 16/9; font-style: normal; text-underline-offset: 2px; list-style-type: disc; list-style-position: inside; table-layout: fixed; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        // --bs-bg-opacity: 0.5 -> [--bs-bg-opacity:0.5]
+        let var_prop = &rules[0].rule.declarations.declarations[0];
+        assert_eq!(
+            map_property(var_prop, false, std::slice::from_ref(&variant), 4.0, &vars),
+            Some("[--bs-bg-opacity:0.5]".to_string())
+        );
+
+        // caption-side: top -> caption-top
+        let caption = &rules[0].rule.declarations.declarations[1];
+        assert_eq!(
+            map_property(caption, false, std::slice::from_ref(&variant), 4.0, &vars),
+            Some("caption-top".to_string())
+        );
+
+        // aspect-ratio: 16/9 -> aspect-video
+        let aspect = &rules[0].rule.declarations.declarations[2];
+        assert_eq!(
+            map_property(aspect, false, std::slice::from_ref(&variant), 4.0, &vars),
+            Some("aspect-video".to_string())
+        );
+
+        // font-style: normal -> not-italic
+        let font_style = &rules[0].rule.declarations.declarations[3];
+        assert_eq!(
+            map_property(
+                font_style,
+                false,
+                std::slice::from_ref(&variant),
+                4.0,
+                &vars
+            ),
+            Some("not-italic".to_string())
+        );
+
+        // text-underline-offset: 2px -> underline-offset-[2px]
+        let underline_offset = &rules[0].rule.declarations.declarations[4];
+        assert_eq!(
+            map_property(
+                underline_offset,
+                false,
+                std::slice::from_ref(&variant),
+                4.0,
+                &vars
+            ),
+            Some("underline-offset-[2px]".to_string())
+        );
+
+        // list-style-type: disc -> list-disc
+        let list_type = &rules[0].rule.declarations.declarations[5];
+        assert_eq!(
+            map_property(list_type, false, std::slice::from_ref(&variant), 4.0, &vars),
+            Some("list-disc".to_string())
+        );
+
+        // list-style-position: inside -> list-inside
+        let list_pos = &rules[0].rule.declarations.declarations[6];
+        assert_eq!(
+            map_property(list_pos, false, std::slice::from_ref(&variant), 4.0, &vars),
+            Some("list-inside".to_string())
+        );
+
+        // table-layout: fixed -> table-fixed
+        let table_layout = &rules[0].rule.declarations.declarations[7];
+        assert_eq!(
+            map_property(
+                table_layout,
+                false,
+                std::slice::from_ref(&variant),
+                4.0,
+                &vars
+            ),
+            Some("table-fixed".to_string())
+        );
     }
 }
