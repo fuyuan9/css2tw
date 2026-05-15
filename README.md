@@ -19,7 +19,7 @@
 | **Position** | `absolute`, `relative`, `fixed`, `sticky` | ✅ Supported | Maps standard positioning to utilities. |
 | **Typography** | `font-size`, `font-weight`, `line-height` | ✅ Supported | Maps to standard scales or arbitrary values. |
 | **Border** | `border-radius`, `border-width`, `border-style` | ✅ Supported | Decomposes shorthand properties for conversion. |
-| **Media Queries** | `@media (min-width: ...)` | ⚠️ Partial | Maps to standard responsive breakpoints. |
+| **Media Queries** | `@media` (min/max, dark, print, etc.) | ✅ Supported | Maps to breakpoints, dark:, print:, and more. |
 | **Pseudo Elements** | `::before`, `::after`, `::placeholder` | ✅ Supported | Supports Tailwind v4 pseudo-element syntax. |
 | **Variables** | `var(--my-color)` | ✅ Supported | Resolves variable definitions across stylesheets. |
 | **Animations** | `animation`, `transition` | ✅ Supported | Maps standard properties to utilities or arbitrary values. |

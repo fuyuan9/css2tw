@@ -91,35 +91,59 @@ fn extract_rules_recursive<'i, 'a>(
 /// Currently supports standard breakpoints (sm, md, lg, xl, 2xl) and
 /// generates arbitrary media variants for custom queries.
 fn map_media_query(query: &str) -> TailwindVariant {
-    // Basic mapping for common Tailwind breakpoints
-    // Support both traditional (min-width: ...) and modern (width >= ...) syntax
-    match query {
-        "(min-width: 640px)" | "(width >= 640px)" => TailwindVariant::Media("sm".to_string()),
-        "(min-width: 768px)" | "(width >= 768px)" => TailwindVariant::Media("md".to_string()),
-        "(min-width: 1024px)" | "(width >= 1024px)" => TailwindVariant::Media("lg".to_string()),
-        "(min-width: 1280px)" | "(width >= 1280px)" => TailwindVariant::Media("xl".to_string()),
-        "(min-width: 1536px)" | "(width >= 1536px)" => TailwindVariant::Media("2xl".to_string()),
-        _ => {
-            // Handle max-width or <= syntax
-            if query.contains("max-width:") || query.contains("<=") {
-                let re_max = regex::Regex::new(r"(?:max-width:\s*|width\s*<=\s*)([^)]+)").unwrap();
-                if let Some(cap) = re_max.captures(query) {
-                    let val = cap.get(1).unwrap().as_str().trim();
-                    return TailwindVariant::Media(format!("max-[{}]", val));
-                }
-            }
-            // Handle min-width or >= syntax for arbitrary values
-            if query.contains("min-width:") || query.contains(">=") {
-                let re_min = regex::Regex::new(r"(?:min-width:\s*|width\s*>=\s*)([^)]+)").unwrap();
-                if let Some(cap) = re_min.captures(query) {
-                    let val = cap.get(1).unwrap().as_str().trim();
-                    return TailwindVariant::Media(val.to_string());
-                }
-            }
-            // Fallback to arbitrary variant
-            TailwindVariant::Arbitrary(format!("[@media_{}]", query.replace(' ', "_")))
+    let normalized = query.to_lowercase();
+    let trimmed = normalized.trim();
+
+    // 1. Handle special keywords
+    if trimmed == "print" {
+        return TailwindVariant::Media("print".to_string());
+    }
+    if trimmed.contains("prefers-color-scheme: dark") {
+        return TailwindVariant::Media("dark".to_string());
+    }
+    if trimmed.contains("orientation: landscape") {
+        return TailwindVariant::Media("landscape".to_string());
+    }
+    if trimmed.contains("orientation: portrait") {
+        return TailwindVariant::Media("portrait".to_string());
+    }
+    if trimmed.contains("prefers-reduced-motion: reduce") {
+        return TailwindVariant::Media("motion-reduce".to_string());
+    }
+    if trimmed.contains("prefers-reduced-motion: no-preference") {
+        return TailwindVariant::Media("motion-safe".to_string());
+    }
+
+    // 2. Handle complex/combined queries
+    if trimmed.contains(" and ") || trimmed.contains(',') {
+        // Replace spaces with underscores for Tailwind arbitrary variants
+        let safe_query = query.replace(' ', "_").replace('(', "(").replace(')', ")");
+        return TailwindVariant::Arbitrary(format!("[@media_{}]", safe_query));
+    }
+
+    // 3. Handle min-width (breakpoints or arbitrary)
+    let re_min = regex::Regex::new(r"(?:min-width:\s*|width\s*>=\s*)([0-9]+px)").unwrap();
+    if let Some(cap) = re_min.captures(trimmed) {
+        let val = cap.get(1).unwrap().as_str();
+        match val {
+            "640px" => return TailwindVariant::Media("sm".to_string()),
+            "768px" => return TailwindVariant::Media("md".to_string()),
+            "1024px" => return TailwindVariant::Media("lg".to_string()),
+            "1280px" => return TailwindVariant::Media("xl".to_string()),
+            "1536px" => return TailwindVariant::Media("2xl".to_string()),
+            _ => return TailwindVariant::Media(format!("min-[{}]", val)),
         }
     }
+
+    // 4. Handle max-width
+    let re_max = regex::Regex::new(r"(?:max-width:\s*|width\s*<=\s*)([0-9]+px)").unwrap();
+    if let Some(cap) = re_max.captures(trimmed) {
+        let val = cap.get(1).unwrap().as_str();
+        return TailwindVariant::Media(format!("max-[{}]", val));
+    }
+
+    // 5. Fallback to generic arbitrary media variant
+    TailwindVariant::Arbitrary(format!("[@media_{}]", query.replace(' ', "_")))
 }
 
 /// Extracts CSS custom properties (variables) from style rules.
@@ -341,25 +365,55 @@ mod tests {
             @media (min-width: 768px) {
                 .test:hover { color: blue; }
             }
+            @media (prefers-color-scheme: dark) {
+                .dark-test { color: white; }
+            }
+            @media print {
+                .print-test { display: none; }
+            }
+            @media (min-width: 500px) {
+                .arbitrary-min { color: green; }
+            }
+            @media (min-width: 640px) and (max-width: 767px) {
+                .combined { color: black; }
+            }
         ";
         let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
         let parsed = ParsedStylesheet { ast: stylesheet };
         let rules = extract_style_rules(&parsed);
         let map = build_rule_map(&rules);
 
-        assert!(map.contains_key("test"));
-        let mappings = map.get("test").unwrap();
-
         // Check for max-width: 1120px
-        assert!(mappings.iter().any(|m| m
+        assert!(map.get("test").unwrap().iter().any(|m| m
             .variants
             .contains(&TailwindVariant::Media("max-[1120px]".to_string()))));
 
-        // Check for md:hover (min-width: 768px + hover)
-        assert!(mappings.iter().any(|m| {
+        // Check for md:hover
+        assert!(map.get("test").unwrap().iter().any(|m| {
             m.variants
                 .contains(&TailwindVariant::Media("md".to_string()))
                 && m.variants.contains(&TailwindVariant::Hover)
         }));
+
+        // Check for dark:
+        assert!(map.get("dark-test").unwrap().iter().any(|m| m
+            .variants
+            .contains(&TailwindVariant::Media("dark".to_string()))));
+
+        // Check for print:
+        assert!(map.get("print-test").unwrap().iter().any(|m| m
+            .variants
+            .contains(&TailwindVariant::Media("print".to_string()))));
+
+        // Check for min-[500px]:
+        assert!(map.get("arbitrary-min").unwrap().iter().any(|m| m
+            .variants
+            .contains(&TailwindVariant::Media("min-[500px]".to_string()))));
+
+        // Check for combined: [@media(...)]
+        assert!(map.get("combined").unwrap().iter().any(|m| m
+            .variants
+            .iter()
+            .any(|v| matches!(v, TailwindVariant::Arbitrary(s) if s.contains("@media")))));
     }
 }
