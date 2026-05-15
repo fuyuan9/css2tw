@@ -56,7 +56,7 @@ impl ConversionPlanner {
                 skipped_rules: Vec::new(),
             },
         };
-        let new_classes = resolved.to_tailwind_string(rem_scale);
+        let (new_classes, unmapped) = resolved.resolve_tailwind(rem_scale);
 
         let mut trace = Vec::new();
         trace.push(format!(
@@ -86,6 +86,9 @@ impl ConversionPlanner {
         };
 
         trace.push(format!("Resolved Tailwind utility: {}", new_classes));
+        if !unmapped.is_empty() {
+            trace.push(format!("Unmapped properties: {}", unmapped.join(", ")));
+        }
 
         let mut confidence_reasons = vec![crate::report::ConfidenceReason::FullMatch];
         let mut score = 1.0;
@@ -114,6 +117,16 @@ impl ConversionPlanner {
             None
         };
 
+        let failure_reason = if new_classes.is_empty() {
+            if !unmapped.is_empty() {
+                Some(crate::report::FailureReason::UnsupportedProperty)
+            } else {
+                Some(crate::report::FailureReason::NoMappingFound)
+            }
+        } else {
+            None
+        };
+
         Some(Replacement {
             span: crate::source::class_usage::Span { start: 0, end: 0 },
             before: class_name.to_string(),
@@ -126,6 +139,7 @@ impl ConversionPlanner {
             trace,
             raw_css,
             suggestion,
+            failure_reason,
         })
     }
 }

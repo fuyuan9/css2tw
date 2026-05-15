@@ -34,6 +34,11 @@ impl<'i> ResolvedElementStyle<'i> {
     /// category and variants. It respects CSS specificity and the `!important` flag
     /// to ensure that the generated Tailwind string accurately reflects the intended styles.
     pub fn to_tailwind_string(&self, rem_scale: f32) -> String {
+        self.resolve_tailwind(rem_scale).0
+    }
+
+    /// Internal helper to resolve Tailwind classes and track unmapped properties.
+    pub(crate) fn resolve_tailwind(&self, rem_scale: f32) -> (String, Vec<String>) {
         use crate::tailwind::mapping::map_property;
         use std::collections::{HashMap, HashSet};
 
@@ -75,6 +80,7 @@ impl<'i> ResolvedElementStyle<'i> {
         }
 
         let mut tailwind_classes = Vec::new();
+        let mut unmapped = Vec::new();
         for mapping in best_props.values() {
             if let Some(tw_class) = map_property(
                 &mapping.property,
@@ -84,11 +90,17 @@ impl<'i> ResolvedElementStyle<'i> {
                 &self.variable_map,
             ) {
                 tailwind_classes.push(tw_class);
+            } else {
+                let mut name = String::new();
+                let mut printer =
+                    lightningcss::printer::Printer::new(&mut name, Default::default());
+                let _ = mapping.property.to_css(&mut printer, mapping.important);
+                unmapped.push(name);
             }
         }
 
         if tailwind_classes.is_empty() {
-            return String::new();
+            return (String::new(), unmapped);
         }
 
         let mut unique: Vec<_> = tailwind_classes
@@ -97,7 +109,7 @@ impl<'i> ResolvedElementStyle<'i> {
             .into_iter()
             .collect();
         unique.sort();
-        unique.join(" ")
+        (unique.join(" "), unmapped)
     }
 
     /// Gets the raw CSS declarations for this style.
@@ -146,7 +158,7 @@ impl<'i> ResolvedElementStyle<'i> {
         rem_scale: f32,
         mut trace: Vec<String>,
     ) -> crate::rewrite::patch::Replacement {
-        let after = self.to_tailwind_string(rem_scale);
+        let (after, unmapped) = self.resolve_tailwind(rem_scale);
         let raw_css = self.get_raw_css();
         let suggestion = self.get_suggestion(&after);
 
@@ -157,12 +169,21 @@ impl<'i> ResolvedElementStyle<'i> {
                 self.diagnostics.matched_selectors.join(", ")
             ));
         }
-        if !self.diagnostics.unmapped_properties.is_empty() {
-            trace.push(format!(
-                "Unmapped properties: {}",
-                self.diagnostics.unmapped_properties.join(", ")
-            ));
+        if !unmapped.is_empty() {
+            trace.push(format!("Unmapped properties: {}", unmapped.join(", ")));
         }
+
+        let failure_reason = if after.is_empty() && !self.properties.is_empty() {
+            if !unmapped.is_empty() {
+                Some(crate::report::FailureReason::UnsupportedProperty)
+            } else if !self.diagnostics.skipped_rules.is_empty() {
+                Some(crate::report::FailureReason::ComplexSelector)
+            } else {
+                Some(crate::report::FailureReason::NoMappingFound)
+            }
+        } else {
+            None
+        };
 
         crate::rewrite::patch::Replacement {
             span,
@@ -176,6 +197,7 @@ impl<'i> ResolvedElementStyle<'i> {
             trace,
             raw_css,
             suggestion,
+            failure_reason,
         }
     }
 }

@@ -6,6 +6,26 @@
 
 **css2tw** is an AI-native Rust CLI tool designed to mechanically migrate legacy CSS class usage into Tailwind CSS utility classes. It prioritizes safety, performance, and seamless integration with AI coding agents.
 
+## 📊 Conversion Coverage
+
+`css2tw` supports many core CSS properties, but some complex features are currently under development or require manual verification.
+
+| Category | Property Examples | Status | Notes |
+| :--- | :--- | :--- | :--- |
+| **Colors** | `color`, `background-color`, `border-color` | ✅ Supported | Supports both standard colors and arbitrary values (`[...]`). |
+| **Spacing** | `margin`, `padding`, `gap` | ✅ Supported | Supports `rem` conversion and negative values. |
+| **Sizing** | `width`, `height`, `min-width` | ✅ Supported | Supports `rem` and `px` unit conversion. |
+| **Display** | `display: flex`, `grid`, `none` | ✅ Supported | Maps core layout modes to Tailwind utilities. |
+| **Position** | `absolute`, `relative`, `fixed`, `sticky` | ✅ Supported | Maps standard positioning to utilities. |
+| **Typography** | `font-size`, `font-weight`, `line-height` | ✅ Supported | Maps to standard scales or arbitrary values. |
+| **Border** | `border-radius`, `border-width`, `border-style` | ✅ Supported | Decomposes shorthand properties for conversion. |
+| **Media Queries** | `@media (min-width: ...)` | ⚠️ Partial | Maps to standard responsive breakpoints. |
+| **Pseudo Elements** | `::before`, `::after`, `::placeholder` | ✅ Supported | Supports Tailwind v4 pseudo-element syntax. |
+| **Variables** | `var(--my-color)` | ✅ Supported | Resolves variable definitions across stylesheets. |
+| **Animations** | `animation`, `transition` | ❌ Unsupported | Complex animation definitions are currently skipped. |
+
+---
+
 ## 🚀 Features
 
 - **🎯 AI-First Precision:** Optimized for mechanical code migration. By default, it only transforms elements with existing `class` attributes to ensure predictable, non-invasive updates to legacy codebases.

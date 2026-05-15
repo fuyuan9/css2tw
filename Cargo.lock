@@ -364,6 +364,7 @@ dependencies = [
  "predicates",
  "schemars",
  "serde_json",
+ "similar 2.7.0",
  "tempfile",
 ]
 

@@ -26,6 +26,8 @@ pub struct Replacement {
     pub raw_css: Option<String>,
     /// Actionable suggestion for the user or agent.
     pub suggestion: Option<String>,
+    /// Standardized reason if the conversion failed or has low confidence.
+    pub failure_reason: Option<crate::report::FailureReason>,
 }
 
 /// Applies a list of replacements to a source string.

@@ -7,18 +7,27 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// The main JSON output structure of the css2tw CLI.
+/// This structure is intended to be a stable contract for AI agents and other tools.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Report {
+    /// Semantic version of the report schema.
     pub version: String,
+    /// The command that generated this report (e.g., "scan", "convert").
     pub command: String,
+    /// Execution mode: "read_only" (scan), "dry_run", or "write".
     pub mode: String,
+    /// Statistical summary of the conversion process.
     pub summary: Summary,
+    /// Detailed list of changes planned or applied to specific files.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub changes: Vec<ChangeFile>,
+    /// List of selectors and properties that could not be converted.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub unconverted: Vec<Unconverted>,
+    /// General informational warnings encountered during processing.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
+    /// Errors that occurred during processing (e.g., file read errors).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<String>,
 }
@@ -26,44 +35,72 @@ pub struct Report {
 /// A statistical summary of the conversion process.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Summary {
+    /// Total number of files scanned in the target directory.
     pub files_scanned: usize,
+    /// Total number of CSS files found and parsed.
     pub css_files_scanned: usize,
+    /// Total number of source files (HTML, JSX, etc.) scanned for class usages.
     pub source_files_scanned: usize,
+    /// Total number of unique class names found in the source files.
     pub classes_found: usize,
+    /// Number of classes that can be fully or partially converted.
     pub classes_convertible: usize,
+    /// Number of classes that have some convertible and some unconvertible properties.
     pub classes_partially_convertible: usize,
+    /// Number of classes that cannot be converted at all.
     pub classes_unconvertible: usize,
+    /// Total number of files that were (or would be) modified.
     pub files_changed: usize,
+    /// Total number of individual class replacements planned.
     pub replacements_planned: usize,
+    /// Total count of warnings.
     pub warnings: usize,
+    /// Total count of errors.
     pub errors: usize,
 }
 
 /// Represents changes made or planned for a specific source file.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ChangeFile {
+    /// Path to the source file, relative to the scan root.
     pub file: String,
+    /// Status of the file: "found", "planned", "modified", or "streamed".
     pub status: String,
-    pub replacements: Vec<ReplacementReport>,
+    /// Detailed list of patches (replacements) within this file.
+    #[serde(alias = "replacements")]
+    pub patches: Vec<ReplacementReport>,
+    /// The final content of the file after applying all replacements.
+    /// Only included if explicitly requested via CLI flags.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub patched_content: Option<String>,
+    /// A unified diff string representing the changes in this file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff: Option<String>,
 }
 
 /// Details of a single class replacement.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ReplacementReport {
+    /// Byte-offset range of the original class name in the source file.
     pub range: RangeReport,
+    /// The original class name or selector.
     pub before: String,
+    /// The replacement Tailwind utility classes.
     pub after: String,
+    /// Confidence score and qualitative reasons for the conversion.
     pub confidence: ConfidenceReport,
+    /// The source selector that triggered this replacement (if applicable).
     pub source_selector: String,
+    /// Human-readable reasons for why this conversion was chosen.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub reasons: Vec<String>,
-    /// Step-by-step trace of the conversion logic
+    /// Step-by-step trace of the internal conversion logic for debugging.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trace: Vec<String>,
+    /// The raw CSS property-value pairs that were converted.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_css: Option<String>,
+    /// A suggested course of action if manual intervention is needed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suggestion: Option<String>,
 }
@@ -71,7 +108,9 @@ pub struct ReplacementReport {
 /// Detailed confidence score and reasons for a replacement.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
 pub struct ConfidenceReport {
+    /// A score from 0.0 to 1.0 indicating conversion reliability.
     pub score: f32,
+    /// Specific factors that influenced the confidence score.
     pub reasons: Vec<ConfidenceReason>,
 }
 
@@ -79,33 +118,83 @@ pub struct ConfidenceReport {
 #[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(tag = "type", content = "detail")]
 pub enum ConfidenceReason {
+    /// Direct match with standard Tailwind utilities.
     FullMatch,
+    /// Some properties matched, but others required arbitrary values.
     PartialMatch(Vec<String>),
+    /// Multiple CSS rules matched this class, leading to potential ambiguity.
     AmbiguousSelector(String),
+    /// A CSS variable was successfully resolved to a concrete value.
     VariableResolved(String),
+    /// Matched against custom theme configuration.
     ThemeMapping,
+    /// Generated a Tailwind arbitrary value `[...]`.
     ArbitraryValue,
+    /// One or more properties have low mapping confidence.
     LowConfidenceProperty(String),
 }
 
 /// Byte range in the original source file.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RangeReport {
+    /// 0-indexed start byte offset.
     pub start_byte: usize,
+    /// 0-indexed end byte offset (exclusive).
     pub end_byte: usize,
+}
+
+/// Categories of conversion failure.
+#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone, Copy, PartialEq, Eq)]
+pub enum FailureReason {
+    /// The CSS selector is too complex to match reliably (e.g., complex pseudo-selectors).
+    ComplexSelector,
+    /// The CSS property is not supported by Tailwind or the current mapper.
+    UnsupportedProperty,
+    /// Conflicting styles make it impossible to determine the final state.
+    AmbiguousCascade,
+    /// Conversion requires a theme token that is not defined.
+    RequiresThemeToken,
+    /// The class name appears to be dynamic or constructed at runtime.
+    DynamicClass,
+    /// Converting the property might break CSS specificity expectations.
+    UnsafeSpecificity,
+    /// No mapping was found for this selector or property.
+    NoMappingFound,
+}
+
+impl std::fmt::Display for FailureReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            FailureReason::ComplexSelector => "ComplexSelector",
+            FailureReason::UnsupportedProperty => "UnsupportedProperty",
+            FailureReason::AmbiguousCascade => "AmbiguousCascade",
+            FailureReason::RequiresThemeToken => "RequiresThemeToken",
+            FailureReason::DynamicClass => "DynamicClass",
+            FailureReason::UnsafeSpecificity => "UnsafeSpecificity",
+            FailureReason::NoMappingFound => "NoMappingFound",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 /// Represents a CSS class or selector that could not be converted.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Unconverted {
+    /// The original selector or class name.
     pub selector: String,
-    pub reason: String,
+    /// A standardized category for why conversion failed.
+    pub reason: FailureReason,
+    /// Human-readable details about the failure.
     pub details: String,
+    /// Confidence score (usually low for unconverted items).
     pub confidence: f32,
+    /// Byte-offset range in the source file (if known).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub range: Option<RangeReport>,
+    /// The raw CSS that could not be mapped.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw_css: Option<String>,
+    /// A suggested course of action (e.g., "Use arbitrary values").
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suggestion: Option<String>,
 }
@@ -136,7 +225,7 @@ mod tests {
             changes: vec![ChangeFile {
                 file: "test.html".to_string(),
                 status: "modified".to_string(),
-                replacements: vec![ReplacementReport {
+                patches: vec![ReplacementReport {
                     range: RangeReport {
                         start_byte: 0,
                         end_byte: 10,
@@ -154,6 +243,7 @@ mod tests {
                     suggestion: None,
                 }],
                 patched_content: None,
+                diff: None,
             }],
             unconverted: vec![],
             warnings: vec![],

@@ -54,6 +54,10 @@ struct Cli {
     /// File type for stdin (e.g., html, jsx)
     #[arg(long, global = true)]
     stdin_type: Option<String>,
+
+    /// Display diff of changes (none, unified)
+    #[arg(long, global = true, default_value = "none")]
+    diff: String,
 }
 
 #[derive(Subcommand)]
@@ -446,8 +450,9 @@ fn process_migration(
                 } else {
                     "modified".to_string()
                 },
-                replacements: vec![],
+                patches: vec![],
                 patched_content: None,
+                diff: None,
             };
 
             for rep in replacements {
@@ -455,7 +460,9 @@ fn process_migration(
                     report.summary.classes_unconvertible += 1;
                     report.unconverted.push(css2tw_core::report::Unconverted {
                         selector: rep.before.clone(),
-                        reason: "No mapping found".to_string(),
+                        reason: rep
+                            .failure_reason
+                            .unwrap_or(css2tw_core::report::FailureReason::NoMappingFound),
                         details: rep.trace.join("; "),
                         confidence: rep.confidence.score,
                         range: Some(css2tw_core::report::RangeReport {
@@ -470,7 +477,7 @@ fn process_migration(
                     report.summary.replacements_planned += 1;
                     has_actual_replacements = true;
                     change_file
-                        .replacements
+                        .patches
                         .push(css2tw_core::report::ReplacementReport {
                             range: css2tw_core::report::RangeReport {
                                 start_byte: rep.span.start,
@@ -497,9 +504,9 @@ fn process_migration(
             }
 
             if has_actual_replacements {
-                if cli.include_patched || mode == "write" {
+                if cli.include_patched || mode == "write" || cli.diff == "unified" {
                     let actual_replacements: Vec<_> = change_file
-                        .replacements
+                        .patches
                         .iter()
                         .map(|r| css2tw_core::rewrite::patch::Replacement {
                             span: css2tw_core::source::class_usage::Span {
@@ -513,6 +520,7 @@ fn process_migration(
                             trace: r.trace.clone(),
                             raw_css: r.raw_css.clone(),
                             suggestion: r.suggestion.clone(),
+                            failure_reason: None,
                         })
                         .collect();
 
@@ -522,6 +530,14 @@ fn process_migration(
                     );
                     if cli.include_patched {
                         change_file.patched_content = Some(patched.clone());
+                    }
+                    if cli.diff == "unified" {
+                        let diff_str =
+                            generate_diff(&source_file.content, &patched, &source_file.path);
+                        if !cli.json && !cli.ndjson {
+                            println!("{}", diff_str);
+                        }
+                        change_file.diff = Some(diff_str);
                     }
                     if mode == "write" && !is_stdin {
                         if let Err(e) = std::fs::write(&source_file.path, patched) {
@@ -611,4 +627,13 @@ fn print_report(report: &css2tw_core::report::Report, cli: &Cli) -> anyhow::Resu
         println!("{}", serde_json::to_string(report)?);
     }
     Ok(())
+}
+
+/// Generates a unified diff between two strings.
+fn generate_diff(old: &str, new: &str, filename: &str) -> String {
+    similar::TextDiff::from_lines(old, new)
+        .unified_diff()
+        .context_radius(3)
+        .header(filename, filename)
+        .to_string()
 }

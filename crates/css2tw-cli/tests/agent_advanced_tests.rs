@@ -99,7 +99,7 @@ fn test_cli_raw_css_and_suggestions() {
     // So it should be in 'changes' if it maps.
 
     let rep = if !json["changes"].as_array().unwrap().is_empty() {
-        &json["changes"][0]["replacements"][0]
+        &json["changes"][0]["patches"][0]
     } else {
         &json["unconverted"][0]
     };
