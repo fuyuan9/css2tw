@@ -234,6 +234,19 @@ pub fn map_property(
                 None
             }
         }
+        Property::FlexFlow(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "row wrap" | "wrap" => Some("flex-wrap".to_string()),
+                    "row nowrap" | "nowrap" => Some("flex-nowrap".to_string()),
+                    _ => Some(format!("flex-[flow:{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
         Property::FlexGrow(v, _) => Some(format!("grow-[{}]", v)),
         Property::FlexShrink(v, _) => Some(format!("shrink-[{}]", v)),
         Property::FlexBasis(v, _) => length_to_tw(v, rem_scale).map(|s| format!("basis-{}", s)),
@@ -410,10 +423,11 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                if dest == "inherit" {
-                    Some("text-inherit".to_string())
-                } else {
-                    Some(format!("text-[{}]", escape_arbitrary_value(&dest)))
+                match dest.as_str() {
+                    "inherit" => Some("text-inherit".to_string()),
+                    "currentColor" | "currentcolor" => Some("text-current".to_string()),
+                    "transparent" => Some("text-transparent".to_string()),
+                    _ => Some(format!("text-[{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -423,10 +437,77 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                if dest == "inherit" {
-                    Some("bg-inherit".to_string())
-                } else {
-                    Some(format!("bg-[{}]", escape_arbitrary_value(&dest)))
+                match dest.as_str() {
+                    "inherit" => Some("bg-inherit".to_string()),
+                    "currentColor" | "currentcolor" => Some("bg-current".to_string()),
+                    "transparent" => Some("bg-transparent".to_string()),
+                    _ => Some(format!("bg-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::BackgroundClip(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v[0].to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "border-box" => Some("bg-clip-border".to_string()),
+                    "padding-box" => Some("bg-clip-padding".to_string()),
+                    "content-box" => Some("bg-clip-content".to_string()),
+                    "text" => Some("bg-clip-text".to_string()),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        Property::BackgroundRepeat(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v[0].to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "no-repeat" => Some("bg-no-repeat".to_string()),
+                    "repeat" => Some("bg-repeat".to_string()),
+                    "repeat-x" => Some("bg-repeat-x".to_string()),
+                    "repeat-y" => Some("bg-repeat-y".to_string()),
+                    "round" => Some("bg-repeat-round".to_string()),
+                    "space" => Some("bg-repeat-space".to_string()),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        Property::BackgroundPosition(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v[0].to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "bottom" => Some("bg-bottom".to_string()),
+                    "center" => Some("bg-center".to_string()),
+                    "left" => Some("bg-left".to_string()),
+                    "left bottom" => Some("bg-left-bottom".to_string()),
+                    "left top" => Some("bg-left-top".to_string()),
+                    "right" => Some("bg-right".to_string()),
+                    "right bottom" => Some("bg-right-bottom".to_string()),
+                    "right top" => Some("bg-right-top".to_string()),
+                    "top" => Some("bg-top".to_string()),
+                    _ => Some(format!("bg-[position:{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::BackgroundSize(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v[0].to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "auto" => Some("bg-auto".to_string()),
+                    "cover" => Some("bg-cover".to_string()),
+                    "contain" => Some("bg-contain".to_string()),
+                    _ => Some(format!("bg-[length:{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -448,6 +529,14 @@ pub fn map_property(
             PosProp::Fixed => Some("fixed".to_string()),
             PosProp::Sticky(_) => Some("sticky".to_string()),
         },
+        Property::InsetInlineStart(v) => length_to_tw(v, rem_scale).map(|s| format!("is-{}", s)),
+        Property::InsetInlineEnd(v) => length_to_tw(v, rem_scale).map(|s| format!("ie-{}", s)),
+        Property::InsetBlockStart(v) => length_to_tw(v, rem_scale).map(|s| format!("it-{}", s)),
+        Property::InsetBlockEnd(v) => length_to_tw(v, rem_scale).map(|s| format!("ib-{}", s)),
+        Property::Top(v) => length_to_tw(v, rem_scale).map(|s| format!("top-{}", s)),
+        Property::Bottom(v) => length_to_tw(v, rem_scale).map(|s| format!("bottom-{}", s)),
+        Property::Left(v) => length_to_tw(v, rem_scale).map(|s| format!("left-{}", s)),
+        Property::Right(v) => length_to_tw(v, rem_scale).map(|s| format!("right-{}", s)),
         Property::Border(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -516,10 +605,63 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                if dest == "inherit" {
-                    Some("border-inherit".to_string())
-                } else {
-                    Some(format!("border-[{}]", escape_arbitrary_value(&dest)))
+                match dest.as_str() {
+                    "inherit" => Some("border-inherit".to_string()),
+                    "currentColor" | "currentcolor" => Some("border-current".to_string()),
+                    "transparent" => Some("border-transparent".to_string()),
+                    _ => Some(format!("border-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::BorderTopColor(c) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if c.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "currentColor" | "currentcolor" => Some("border-t-current".to_string()),
+                    "transparent" => Some("border-t-transparent".to_string()),
+                    _ => Some(format!("border-t-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::BorderBottomColor(c) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if c.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "currentColor" | "currentcolor" => Some("border-b-current".to_string()),
+                    "transparent" => Some("border-b-transparent".to_string()),
+                    _ => Some(format!("border-b-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::BorderLeftColor(c) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if c.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "currentColor" | "currentcolor" => Some("border-l-current".to_string()),
+                    "transparent" => Some("border-l-transparent".to_string()),
+                    _ => Some(format!("border-l-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::BorderRightColor(c) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if c.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "currentColor" | "currentcolor" => Some("border-r-current".to_string()),
+                    "transparent" => Some("border-r-transparent".to_string()),
+                    _ => Some(format!("border-r-[{}]", escape_arbitrary_value(&dest))),
                 }
             } else {
                 None
@@ -553,6 +695,32 @@ pub fn map_property(
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
                 Some(format!("opacity-[{}]", escape_arbitrary_value(&dest)))
+            } else {
+                None
+            }
+        }
+        Property::LetterSpacing(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                if dest == "normal" {
+                    Some("tracking-normal".to_string())
+                } else {
+                    Some(format!("tracking-[{}]", escape_arbitrary_value(&dest)))
+                }
+            } else {
+                None
+            }
+        }
+        Property::TextOverflow(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "clip" => Some("text-clip".to_string()),
+                    "ellipsis" => Some("text-ellipsis".to_string()),
+                    _ => None,
+                }
             } else {
                 None
             }
@@ -875,6 +1043,22 @@ pub fn map_property(
                 None
             }
         }
+        Property::ListStyle(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "none" => Some("list-none".to_string()),
+                    "inside" => Some("list-inside".to_string()),
+                    "outside" => Some("list-outside".to_string()),
+                    "disc" => Some("list-disc".to_string()),
+                    "decimal" => Some("list-decimal".to_string()),
+                    _ => Some(format!("list-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
         Property::Appearance(v, _) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -923,21 +1107,79 @@ pub fn map_property(
                 None
             }
         }
+        Property::Filter(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                if dest == "none" {
+                    Some("filter-none".to_string())
+                } else {
+                    Some(format!("filter-[{}]", escape_arbitrary_value(&dest)))
+                }
+            } else {
+                None
+            }
+        }
+        Property::UserSelect(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "none" => Some("select-none".to_string()),
+                    "text" => Some("select-text".to_string()),
+                    "all" => Some("select-all".to_string()),
+                    "auto" => Some("select-auto".to_string()),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        Property::Fill(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                if dest == "currentColor" || dest == "currentcolor" {
+                    Some("fill-current".to_string())
+                } else {
+                    Some(format!("fill-[{}]", escape_arbitrary_value(&dest)))
+                }
+            } else {
+                None
+            }
+        }
+        Property::BackfaceVisibility(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "visible" => Some("backface-visible".to_string()),
+                    "hidden" => Some("backface-hidden".to_string()),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
         _ => {
             let (prop_name, prop_val) = prop_str
                 .split_once(':')
                 .map(|(n, v)| (n.trim(), v.trim().trim_end_matches(';')))
                 .unwrap_or(("", ""));
 
-            if prop_val == "inherit" {
+            if prop_val == "inherit"
+                || prop_val == "initial"
+                || prop_val == "unset"
+                || prop_val == "revert"
+            {
                 match prop_name {
-                    "color" => return Some("text-inherit".to_string()),
-                    "background-color" => return Some("bg-inherit".to_string()),
-                    "border-color" => return Some("border-inherit".to_string()),
-                    "font-size" => return Some("text-inherit".to_string()),
-                    "line-height" => return Some("leading-inherit".to_string()),
-                    "font-family" => return Some("font-inherit".to_string()),
-                    _ => {}
+                    "color" => return Some(format!("text-{}", prop_val)),
+                    "background-color" => return Some(format!("bg-{}", prop_val)),
+                    "border-color" => return Some(format!("border-{}", prop_val)),
+                    "font-size" => return Some(format!("text-{}", prop_val)),
+                    "line-height" => return Some(format!("leading-{}", prop_val)),
+                    "font-family" => return Some(format!("font-{}", prop_val)),
+                    _ => return Some(format!("[{}:{}]", prop_name, prop_val)),
                 }
             }
 
@@ -1148,7 +1390,8 @@ pub fn map_property(
                         escape_arbitrary_value(prop_val)
                     )),
                 },
-                _ => None,
+                // Tailwind v4 style arbitrary property fallback for unknown properties
+                _ => Some(format!("[{}:{}]", prop_name, prop_val)),
             }
         }
     };
