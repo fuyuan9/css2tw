@@ -5,9 +5,7 @@
 //! typography, and arbitrary value generation.
 
 use lightningcss::printer::{Printer, PrinterOptions};
-use lightningcss::properties::display::{
-    Display, DisplayInside, DisplayKeyword, DisplayOutside, DisplayPair,
-};
+
 use lightningcss::properties::position::Position as PosProp;
 use lightningcss::properties::Property;
 use lightningcss::traits::ToCss as LightningToCss;
@@ -135,7 +133,7 @@ pub fn map_property(
     // Resolve variables if any
     let mut prop_str = String::new();
     let mut printer = Printer::new(&mut prop_str, PrinterOptions::default());
-    let _ = property.to_css(&mut printer, important);
+    let _ = property.to_css(&mut printer, false);
 
     let resolved_str = resolve_vars(&prop_str, variable_map);
 
@@ -195,26 +193,115 @@ pub fn map_property(
     }
 
     let result = match property {
-        Property::Display(display) => match display {
-            Display::Keyword(DisplayKeyword::None) => Some("hidden".to_string()),
-            Display::Pair(DisplayPair {
-                outside,
-                inside,
-                is_list_item: false,
-            }) => match (outside, inside) {
-                (DisplayOutside::Block, DisplayInside::Flow) => Some("block".to_string()),
-                (DisplayOutside::Inline, DisplayInside::Flow) => Some("inline".to_string()),
-                (DisplayOutside::Inline, DisplayInside::FlowRoot) => {
-                    Some("inline-block".to_string())
+        Property::FlexDirection(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "row" => Some("flex-row".to_string()),
+                    "row-reverse" => Some("flex-row-reverse".to_string()),
+                    "column" => Some("flex-col".to_string()),
+                    "column-reverse" => Some("flex-col-reverse".to_string()),
+                    _ => Some(format!(
+                        "flex-[direction:{}]",
+                        escape_arbitrary_value(&dest)
+                    )),
                 }
-                (DisplayOutside::Block, DisplayInside::Flex(_)) => Some("flex".to_string()),
-                (DisplayOutside::Inline, DisplayInside::Flex(_)) => Some("inline-flex".to_string()),
-                (DisplayOutside::Block, DisplayInside::Grid) => Some("grid".to_string()),
-                (DisplayOutside::Inline, DisplayInside::Grid) => Some("inline-grid".to_string()),
-                _ => None,
-            },
-            _ => None,
-        },
+            } else {
+                None
+            }
+        }
+        Property::FlexWrap(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "wrap" => Some("flex-wrap".to_string()),
+                    "wrap-reverse" => Some("flex-wrap-reverse".to_string()),
+                    "nowrap" => Some("flex-nowrap".to_string()),
+                    _ => Some(format!("flex-[wrap:{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::FlexGrow(v, _) => Some(format!("grow-[{}]", v)),
+        Property::FlexShrink(v, _) => Some(format!("shrink-[{}]", v)),
+        Property::FlexBasis(v, _) => length_to_tw(v, rem_scale).map(|s| format!("basis-{}", s)),
+        Property::JustifyContent(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "flex-start" | "start" => Some("justify-start".to_string()),
+                    "flex-end" | "end" => Some("justify-end".to_string()),
+                    "center" => Some("justify-center".to_string()),
+                    "space-between" | "between" => Some("justify-between".to_string()),
+                    "space-around" | "around" => Some("justify-around".to_string()),
+                    "space-evenly" | "evenly" => Some("justify-evenly".to_string()),
+                    _ => Some(format!("justify-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::AlignItems(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "flex-start" | "start" => Some("items-start".to_string()),
+                    "flex-end" | "end" => Some("items-end".to_string()),
+                    "center" => Some("items-center".to_string()),
+                    "baseline" => Some("items-baseline".to_string()),
+                    "stretch" => Some("items-stretch".to_string()),
+                    _ => Some(format!("items-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::AlignSelf(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "auto" => Some("self-auto".to_string()),
+                    "flex-start" | "start" => Some("self-start".to_string()),
+                    "flex-end" | "end" => Some("self-end".to_string()),
+                    "center" => Some("self-center".to_string()),
+                    "baseline" => Some("self-baseline".to_string()),
+                    "stretch" => Some("self-stretch".to_string()),
+                    _ => Some(format!("self-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::Gap(v) => {
+            let mut row = String::new();
+            let mut col = String::new();
+            let mut printer_row = Printer::new(&mut row, PrinterOptions::default());
+            let mut printer_col = Printer::new(&mut col, PrinterOptions::default());
+            if v.row.to_css(&mut printer_row).is_ok() && v.column.to_css(&mut printer_col).is_ok() {
+                if row == col {
+                    length_to_tw(&v.row, rem_scale).map(|s| format!("gap-{}", s))
+                } else {
+                    let r = length_to_tw(&v.row, rem_scale).map(|s| format!("gap-y-{}", s));
+                    let c = length_to_tw(&v.column, rem_scale).map(|s| format!("gap-x-{}", s));
+                    match (r, c) {
+                        (Some(rv), Some(cv)) => Some(format!("{} {}", rv, cv)),
+                        (Some(rv), None) => Some(rv),
+                        (None, Some(cv)) => Some(cv),
+                        _ => None,
+                    }
+                }
+            } else {
+                None
+            }
+        }
+        Property::RowGap(v) => length_to_tw(v, rem_scale).map(|s| format!("gap-y-{}", s)),
+        Property::ColumnGap(v) => length_to_tw(v, rem_scale).map(|s| format!("gap-x-{}", s)),
         // Common Margin
         Property::MarginTop(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("mt", &s)),
         Property::MarginBottom(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("mb", &s)),
@@ -330,23 +417,6 @@ pub fn map_property(
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
                 Some(format!("opacity-[{}]", escape_arbitrary_value(&dest)))
-            } else {
-                None
-            }
-        }
-        Property::Custom(custom) => {
-            if custom.name.as_ref() == "content" {
-                let mut dest = String::new();
-                let mut printer = Printer::new(&mut dest, PrinterOptions::default());
-                if property.to_css(&mut printer, false).is_ok() {
-                    if let Some(val) = dest.strip_prefix("content:") {
-                        Some(format!("content-[{}]", escape_arbitrary_value(val.trim())))
-                    } else {
-                        Some(format!("content-[{}]", escape_arbitrary_value(&dest)))
-                    }
-                } else {
-                    None
-                }
             } else {
                 None
             }
@@ -616,40 +686,196 @@ pub fn map_property(
             }
         }
         _ => {
-            if prop_str.starts_with("content") {
-                let val = prop_str
-                    .split_once(':')
-                    .map(|(_, v)| v.trim().trim_end_matches(';'))
-                    .unwrap_or("");
-                return Some(format!(
-                    "{}content-[{}]",
-                    prefix,
-                    escape_arbitrary_value(val)
-                ));
+            let (prop_name, prop_val) = prop_str
+                .split_once(':')
+                .map(|(n, v)| (n.trim(), v.trim().trim_end_matches(';')))
+                .unwrap_or(("", ""));
+
+            match prop_name {
+                "display" => match prop_val {
+                    "none" => Some("hidden".to_string()),
+                    "block" => Some("block".to_string()),
+                    "inline" => Some("inline".to_string()),
+                    "inline-block" => Some("inline-block".to_string()),
+                    "flex" => Some("flex".to_string()),
+                    "inline-flex" => Some("inline-flex".to_string()),
+                    "grid" => Some("grid".to_string()),
+                    "inline-grid" => Some("inline-grid".to_string()),
+                    "table" => Some("table".to_string()),
+                    "inline-table" => Some("inline-table".to_string()),
+                    "table-row" => Some("table-row".to_string()),
+                    "table-cell" => Some("table-cell".to_string()),
+                    "table-column" => Some("table-column".to_string()),
+                    "table-header-group" => Some("table-header-group".to_string()),
+                    "table-footer-group" => Some("table-footer-group".to_string()),
+                    "table-row-group" => Some("table-row-group".to_string()),
+                    "table-column-group" => Some("table-column-group".to_string()),
+                    "contents" => Some("contents".to_string()),
+                    "list-item" => Some("list-item".to_string()),
+                    _ => Some(format!("display-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "flex" => match prop_val {
+                    "1 1 0%" | "1 1 0" | "1" => Some("flex-1".to_string()),
+                    "1 1 auto" | "auto" => Some("flex-auto".to_string()),
+                    "0 1 auto" | "initial" => Some("flex-initial".to_string()),
+                    "none" => Some("flex-none".to_string()),
+                    _ => Some(format!("flex-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "float" => match prop_val {
+                    "left" => Some("float-left".to_string()),
+                    "right" => Some("float-right".to_string()),
+                    "none" => Some("float-none".to_string()),
+                    "inline-start" => Some("float-left".to_string()),
+                    "inline-end" => Some("float-right".to_string()),
+                    _ => Some(format!("float-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "clear" => match prop_val {
+                    "left" => Some("clear-left".to_string()),
+                    "right" => Some("clear-right".to_string()),
+                    "both" => Some("clear-both".to_string()),
+                    "none" => Some("clear-none".to_string()),
+                    "inline-start" => Some("clear-left".to_string()),
+                    "inline-end" => Some("clear-right".to_string()),
+                    _ => Some(format!("clear-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "object-fit" => match prop_val {
+                    "contain" => Some("object-contain".to_string()),
+                    "cover" => Some("object-cover".to_string()),
+                    "fill" => Some("object-fill".to_string()),
+                    "none" => Some("object-none".to_string()),
+                    "scale-down" => Some("object-scale-down".to_string()),
+                    _ => Some(format!("object-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "text-decoration" | "text-decoration-line" => match prop_val {
+                    "none" => Some("no-underline".to_string()),
+                    "underline" => Some("underline".to_string()),
+                    "line-through" => Some("line-through".to_string()),
+                    "overline" => Some("overline".to_string()),
+                    _ => Some(format!("decoration-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "vertical-align" => match prop_val {
+                    "baseline" => Some("align-baseline".to_string()),
+                    "top" => Some("align-top".to_string()),
+                    "middle" => Some("align-middle".to_string()),
+                    "bottom" => Some("align-bottom".to_string()),
+                    "text-top" => Some("align-text-top".to_string()),
+                    "text-bottom" => Some("align-text-bottom".to_string()),
+                    _ => Some(format!("align-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "white-space" => match prop_val {
+                    "normal" => Some("whitespace-normal".to_string()),
+                    "nowrap" => Some("whitespace-nowrap".to_string()),
+                    "pre" => Some("whitespace-pre".to_string()),
+                    "pre-line" => Some("whitespace-pre-line".to_string()),
+                    "pre-wrap" => Some("whitespace-pre-wrap".to_string()),
+                    _ => Some(format!("whitespace-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "word-break" => match prop_val {
+                    "break-all" => Some("break-all".to_string()),
+                    "keep-all" => Some("break-keep".to_string()),
+                    "break-word" => Some("break-words".to_string()),
+                    _ => None,
+                },
+                "align-content" => match prop_val {
+                    "flex-start" | "start" => Some("content-start".to_string()),
+                    "flex-end" | "end" => Some("content-end".to_string()),
+                    "center" => Some("content-center".to_string()),
+                    "space-between" | "between" => Some("content-between".to_string()),
+                    "space-around" | "around" => Some("content-around".to_string()),
+                    "space-evenly" | "evenly" => Some("content-evenly".to_string()),
+                    "stretch" => Some("content-stretch".to_string()),
+                    "baseline" => Some("content-baseline".to_string()),
+                    _ => Some(format!("content-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "overflow" => match prop_val {
+                    "auto" => Some("overflow-auto".to_string()),
+                    "hidden" => Some("overflow-hidden".to_string()),
+                    "visible" => Some("overflow-visible".to_string()),
+                    "scroll" => Some("overflow-scroll".to_string()),
+                    _ => Some(format!("overflow-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "overflow-x" => match prop_val {
+                    "auto" => Some("overflow-x-auto".to_string()),
+                    "hidden" => Some("overflow-x-hidden".to_string()),
+                    "visible" => Some("overflow-x-visible".to_string()),
+                    "scroll" => Some("overflow-x-scroll".to_string()),
+                    _ => Some(format!("overflow-x-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "overflow-y" => match prop_val {
+                    "auto" => Some("overflow-y-auto".to_string()),
+                    "hidden" => Some("overflow-y-hidden".to_string()),
+                    "visible" => Some("overflow-y-visible".to_string()),
+                    "scroll" => Some("overflow-y-scroll".to_string()),
+                    _ => Some(format!("overflow-y-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "visibility" => match prop_val {
+                    "visible" => Some("visible".to_string()),
+                    "hidden" | "collapse" => Some("invisible".to_string()),
+                    _ => Some(format!("visibility-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "user-select" => Some(format!("select-{}", prop_val)),
+                "pointer-events" => Some(format!("pointer-events-{}", prop_val)),
+                "cursor" => Some(format!("cursor-{}", prop_val)),
+                "content" => Some(format!("content-[{}]", escape_arbitrary_value(prop_val))),
+                "box-sizing" => {
+                    if prop_val == "border-box" {
+                        Some("box-border".to_string())
+                    } else if prop_val == "content-box" {
+                        Some("box-content".to_string())
+                    } else {
+                        None
+                    }
+                }
+                "text-align" => match prop_val {
+                    "left" | "start" => Some("text-left".to_string()),
+                    "right" | "end" => Some("text-right".to_string()),
+                    "center" => Some("text-center".to_string()),
+                    "justify" => Some("text-justify".to_string()),
+                    _ => Some(format!("text-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "text-transform" => match prop_val {
+                    "uppercase" => Some("uppercase".to_string()),
+                    "lowercase" => Some("lowercase".to_string()),
+                    "capitalize" => Some("capitalize".to_string()),
+                    "none" => Some("normal-case".to_string()),
+                    _ => Some(format!(
+                        "text-transform-[{}]",
+                        escape_arbitrary_value(prop_val)
+                    )),
+                },
+                "aspect-ratio" => match prop_val {
+                    "1 / 1" | "1" => Some("aspect-square".to_string()),
+                    "16 / 9" => Some("aspect-video".to_string()),
+                    _ => Some(format!("aspect-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "top" => Some(format!("top-[{}]", escape_arbitrary_value(prop_val))),
+                "bottom" => Some(format!("bottom-[{}]", escape_arbitrary_value(prop_val))),
+                "left" => Some(format!("left-[{}]", escape_arbitrary_value(prop_val))),
+                "right" => Some(format!("right-[{}]", escape_arbitrary_value(prop_val))),
+                "z-index" => Some(format!("z-[{}]", escape_arbitrary_value(prop_val))),
+                "order" => match prop_val {
+                    "-1" => Some("order-first".to_string()),
+                    "0" => Some("order-none".to_string()),
+                    "999999" | "13" => Some("order-last".to_string()),
+                    _ => Some(format!("order-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "line-height" => match prop_val {
+                    "1" => Some("leading-none".to_string()),
+                    "1.25" => Some("leading-tight".to_string()),
+                    "1.375" => Some("leading-snug".to_string()),
+                    "1.5" => Some("leading-normal".to_string()),
+                    "1.625" => Some("leading-relaxed".to_string()),
+                    "2" => Some("leading-loose".to_string()),
+                    _ => Some(format!("leading-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "font-family" => Some(format!("font-[{}]", escape_arbitrary_value(prop_val))),
+                "box-shadow" => match prop_val {
+                    "none" => Some("shadow-none".to_string()),
+                    _ => Some(format!("shadow-[{}]", escape_arbitrary_value(prop_val))),
+                },
+                "transform" => Some(format!("transform-[{}]", escape_arbitrary_value(prop_val))),
+                _ => None,
             }
-            if prop_str.starts_with("box-sizing") {
-                let val = prop_str
-                    .split_once(':')
-                    .unwrap()
-                    .1
-                    .trim()
-                    .trim_end_matches(';');
-                return Some(val.to_string());
-            }
-            if prop_str.starts_with("transform") {
-                let val = prop_str
-                    .split_once(':')
-                    .unwrap()
-                    .1
-                    .trim()
-                    .trim_end_matches(';');
-                return Some(format!(
-                    "{}transform-[{}]",
-                    prefix,
-                    escape_arbitrary_value(val)
-                ));
-            }
-            None
         }
     };
 
