@@ -8,6 +8,7 @@ This tool is designed to be highly interoperable with AI agents for automated co
 2. **Read-Only by Default:** The tool operates in dry-run mode unless the `--write` flag is explicitly passed.
 3. **Confidence Scoring:** `css2tw` calculates a confidence score (0.0 to 1.0) for every conversion. By default, agents should verify high-confidence conversions and request user confirmation for low-confidence ones.
 4. **Tag Selector Filtering:** By default, styles from tag-only selectors (e.g., `div`, `*`) are ignored to keep component classes clean. Agents can override this with `--include-tag-selectors` if they need to migrate global base styles into utility classes.
+5. **Safety via VRT:** Agents are encouraged to initialize [Visual Regression Testing](vrt-usage.md) before performing destructive write operations to ensure UI consistency.
 
 ## Example Workflows
 
@@ -41,7 +42,21 @@ When `css2tw` encounters dynamic classes (e.g., `clsx`, template literals) in JS
 2. If `manual_action_required` is true, present the code block to the user or use secondary reasoning to refactor.
 3. Check `severity` (e.g., `Warning`, `Error`) to prioritize tasks.
 
-### 5. Streaming Migration (NDJSON)
+### 5. Seamless Tooling via MCP
+For agents that support the [Model Context Protocol](https://modelcontextprotocol.io/) (e.g., Claude Desktop, Cursor), you can connect `css2tw-mcp` as a direct tool provider. This allows the agent to call `scan_project` and `detect_config` without manual shell command generation.
+
+**Configuration Example (Claude Desktop):**
+```json
+{
+  "mcpServers": {
+    "css2tw": {
+      "command": "path/to/css2tw-mcp"
+    }
+  }
+}
+```
+
+### 6. Streaming Migration (NDJSON)
 ... (keep existing content)
 
 ## Parsing the Output

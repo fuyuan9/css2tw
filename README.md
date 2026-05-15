@@ -36,6 +36,8 @@
 - **🚫 Tag Selector Filtering:** Automatically ignores styles from selectors without classes or IDs (e.g., `div`, `p`, `*`, `:root`) by default to prevent global base styles from polluting component-level classes. Use `--include-tag-selectors` to include them.
 - **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via CLI or JSON config.
 - **💉 Explicit CSS Injection:** To ensure deterministic behavior, CSS definitions must be explicitly provided. Automatic scanning is disabled by default to prioritize control.
+- **📸 Visual Regression Testing:** Built-in utilities to initialize Playwright-based VRT to verify migration safety without breaking the UI.
+- **🔌 MCP Server Support:** First-class [Model Context Protocol](https://modelcontextprotocol.io/) server for seamless integration with AI agents like Claude Desktop and Cursor.
 
 ## Installation
 
@@ -91,12 +93,24 @@ Retrieve the JSON schema for reports and configurations to ensure stable integra
 css2tw schema
 ```
 
-### 4. Explain Conversion
+### 5. Visual Regression Testing (VRT)
 
-Explain how a specific CSS class would be converted.
+Generate a Playwright-based VRT setup to compare the UI before and after migration.
 
 ```bash
-css2tw explain .btn-primary --css ./src/styles.css --json
+# Initialize VRT config and test files
+css2tw vrt init --url http://localhost:3000
+```
+
+See the [VRT Usage Guide](docs/vrt-usage.md) for more details.
+
+### 6. AI Agent Integration (MCP)
+
+Run the dedicated MCP server to allow AI agents to control `css2tw` directly.
+
+```bash
+# Run the MCP server over stdio
+css2tw-mcp
 ```
 
 ## 🛠️ CLI Reference
