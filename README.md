@@ -212,6 +212,23 @@ Run the full test suite:
 cargo test
 ```
 
+### Benchmarking
+We use `cargo xtask` to run conversion benchmarks against popular CSS frameworks. This helps us track conversion accuracy and safety over time.
+
+To run all benchmarks and see a summary:
+```bash
+cargo xtask bench-all
+```
+
+To run a specific framework version:
+```bash
+cargo xtask bench-bootstrap-v5   # Bootstrap 5.3 (Latest)
+cargo xtask bench-bootstrap-v4   # Bootstrap 4.6
+cargo xtask bench-bootstrap-v3   # Bootstrap 3.4
+cargo xtask bench-bulma-v0       # Bulma 0.9
+cargo xtask bench-bulma-v1       # Bulma 1.0 (Latest)
+```
+
 ### Local Execution
 ```bash
 cargo run --bin css2tw -- <command> [args]

@@ -27,7 +27,12 @@ fn try_main() -> Result<(), DynError> {
         Some("dist") => dist()?,
         Some("publish-dry-run") => publish(true)?,
         Some("publish") => publish(false)?,
-        Some("bench-bootstrap") => bench_bootstrap()?,
+        Some("bench-bootstrap") | Some("bench-bootstrap-v5") => bench_bootstrap_v5()?,
+        Some("bench-bootstrap-v4") => bench_bootstrap_v4()?,
+        Some("bench-bootstrap-v3") => bench_bootstrap_v3()?,
+        Some("bench-bulma") | Some("bench-bulma-v0") => bench_bulma_v0()?,
+        Some("bench-bulma-v1") => bench_bulma_v1()?,
+        Some("bench-all") => bench_all()?,
         _ => print_help(),
     }
     Ok(())
@@ -36,10 +41,15 @@ fn try_main() -> Result<(), DynError> {
 fn print_help() {
     eprintln!(
         "Tasks:
-dist            Builds the project and copies the binary to npm/platforms
-publish         Publishes all packages to npm
-publish-dry-run Simulates npm publish for all packages
-bench-bootstrap Runs a conversion benchmark against Bootstrap CSS
+dist                Builds the project and copies the binary to npm/platforms
+publish             Publishes all packages to npm
+publish-dry-run     Simulates npm publish for all packages
+bench-bootstrap-v5  Runs benchmark against Bootstrap v5
+bench-bootstrap-v4  Runs benchmark against Bootstrap v4
+bench-bootstrap-v3  Runs benchmark against Bootstrap v3
+bench-bulma-v0      Runs benchmark against Bulma v0.9
+bench-bulma-v1      Runs benchmark against Bulma v1.0
+bench-all           Runs all benchmarks and shows a summary
 "
     )
 }
@@ -152,26 +162,75 @@ fn project_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// Runs a conversion benchmark against Bootstrap CSS.
-fn bench_bootstrap() -> Result<(), DynError> {
+/// Runs all benchmarks.
+fn bench_all() -> Result<(), DynError> {
+    println!("{}", "=== Running All Benchmarks ===".bold().magenta());
+    bench_bootstrap_v5()?;
+    bench_bootstrap_v4()?;
+    bench_bootstrap_v3()?;
+    bench_bulma_v0()?;
+    bench_bulma_v1()?;
+    println!(
+        "{}",
+        "\nAll benchmarks completed successfully!".bold().green()
+    );
+    Ok(())
+}
+
+fn bench_bootstrap_v5() -> Result<(), DynError> {
     let root = project_root();
-    let bootstrap_path = root
+    let path = root
         .join("fixtures")
         .join("benchmarks")
-        .join("bootstrap.css");
+        .join("bootstrap5.css");
+    run_benchmark("Bootstrap v5", &path)
+}
 
-    if !bootstrap_path.exists() {
-        return Err(format!(
-            "Bootstrap CSS not found at {}. Please run `curl -sSL https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.css -o {}`",
-            bootstrap_path.display(),
-            bootstrap_path.display()
-        ).into());
+fn bench_bootstrap_v4() -> Result<(), DynError> {
+    let root = project_root();
+    let path = root
+        .join("fixtures")
+        .join("benchmarks")
+        .join("bootstrap4.css");
+    run_benchmark("Bootstrap v4", &path)
+}
+
+fn bench_bootstrap_v3() -> Result<(), DynError> {
+    let root = project_root();
+    let path = root
+        .join("fixtures")
+        .join("benchmarks")
+        .join("bootstrap3.css");
+    run_benchmark("Bootstrap v3", &path)
+}
+
+fn bench_bulma_v0() -> Result<(), DynError> {
+    let root = project_root();
+    let path = root.join("fixtures").join("benchmarks").join("bulma0.css");
+    run_benchmark("Bulma v0.9", &path)
+}
+
+fn bench_bulma_v1() -> Result<(), DynError> {
+    let root = project_root();
+    let path = root.join("fixtures").join("benchmarks").join("bulma1.css");
+    run_benchmark("Bulma v1.0", &path)
+}
+
+/// Generic benchmark runner.
+fn run_benchmark(name: &str, css_path: &Path) -> Result<(), DynError> {
+    if !css_path.exists() {
+        return Err(format!("Benchmark file not found: {}", css_path.display()).into());
     }
 
-    println!("{}", "=== Bootstrap Conversion Benchmark ===".bold().cyan());
-    println!("Loading {}...", bootstrap_path.display());
+    println!(
+        "\n{}",
+        format!("--- {} Conversion Benchmark ---", name)
+            .bold()
+            .cyan()
+    );
+    println!("Loading {}...", css_path.display());
 
-    let css_content = fs::read_to_string(&bootstrap_path)?;
+    let css_content = fs::read_to_string(css_path)?;
     let parsed = parse_css(&css_content).map_err(|e| format!("Failed to parse CSS: {:?}", e))?;
     let rules = extract_style_rules(&parsed);
     let rule_map = build_rule_map(&rules);
@@ -182,7 +241,7 @@ fn bench_bootstrap() -> Result<(), DynError> {
     let mut partial_conversions = 0;
     let mut failed_conversions = 0;
 
-    println!("Analyzing {} unique classes...\n", total_classes);
+    println!("Analyzing {} unique classes...", total_classes);
 
     let mut failure_reasons = std::collections::HashMap::new();
     let mut failed_examples = Vec::new();
@@ -206,7 +265,7 @@ fn bench_bootstrap() -> Result<(), DynError> {
                         .map(|r| r.to_string())
                         .unwrap_or_else(|| "Unknown".to_string());
                     *failure_reasons.entry(reason).or_insert(0) += 1;
-                    if failed_examples.len() < 20 {
+                    if failed_examples.len() < 5 {
                         failed_examples.push(format!("{:<20} ({})", class_name, rep.after));
                     }
                 }
@@ -243,27 +302,17 @@ fn bench_bootstrap() -> Result<(), DynError> {
         failed_pct
     );
 
-    if !failure_reasons.is_empty() {
-        println!("\n{}", "--- Failure Reasons ---".bold());
+    if !failure_reasons.is_empty() && failed_conversions > 0 {
+        print!("  Reasons: ");
         let mut sorted_reasons: Vec<_> = failure_reasons.into_iter().collect();
         sorted_reasons.sort_by_key(|b| std::cmp::Reverse(b.1));
-        for (reason, count) in sorted_reasons {
-            println!("{:<20} : {:>5}", reason, count);
-        }
+        let reason_strings: Vec<_> = sorted_reasons
+            .into_iter()
+            .take(3)
+            .map(|(r, c)| format!("{} ({})", r, c))
+            .collect();
+        println!("{}", reason_strings.join(", "));
     }
-
-    if !failed_examples.is_empty() {
-        println!(
-            "\n{}",
-            "--- Failed Examples (Class Name (Current Output)) ---".bold()
-        );
-        for example in failed_examples {
-            println!("{}", example);
-        }
-    }
-
-    println!("{:-<40}", "");
-    println!("{:<20} : {:>5}", "Total Classes".bold(), total_classes);
 
     Ok(())
 }
