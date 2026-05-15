@@ -452,6 +452,173 @@ pub fn map_property(
                 None
             }
         }
+        Property::Transition(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!("transition-[{}]", escape_arbitrary_value(&dest)))
+            } else {
+                None
+            }
+        }
+        Property::TransitionProperty(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "all" => Some("transition-all".to_string()),
+                    "none" => Some("transition-none".to_string()),
+                    "opacity" => Some("transition-opacity".to_string()),
+                    "transform" => Some("transition-transform".to_string()),
+                    "box-shadow" => Some("transition-shadow".to_string()),
+                    _ => Some(format!("transition-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::TransitionDuration(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!("duration-[{}]", escape_arbitrary_value(&dest)))
+            } else {
+                None
+            }
+        }
+        Property::TransitionTimingFunction(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "linear" => Some("ease-linear".to_string()),
+                    "ease-in" => Some("ease-in".to_string()),
+                    "ease-out" => Some("ease-out".to_string()),
+                    "ease-in-out" => Some("ease-in-out".to_string()),
+                    _ => Some(format!("ease-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::TransitionDelay(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!("delay-[{}]", escape_arbitrary_value(&dest)))
+            } else {
+                None
+            }
+        }
+        Property::Animation(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!("animate-[{}]", escape_arbitrary_value(&dest)))
+            } else {
+                None
+            }
+        }
+        Property::AnimationName(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "none" => Some("animate-none".to_string()),
+                    "spin" => Some("animate-spin".to_string()),
+                    "ping" => Some("animate-ping".to_string()),
+                    "pulse" => Some("animate-pulse".to_string()),
+                    "bounce" => Some("animate-bounce".to_string()),
+                    _ => Some(format!("animate-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
+        Property::AnimationDuration(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!(
+                    "[animation-duration:{}]",
+                    escape_arbitrary_value(&dest)
+                ))
+            } else {
+                None
+            }
+        }
+        Property::AnimationTimingFunction(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!(
+                    "[animation-timing-function:{}]",
+                    escape_arbitrary_value(&dest)
+                ))
+            } else {
+                None
+            }
+        }
+        Property::AnimationIterationCount(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!(
+                    "[animation-iteration-count:{}]",
+                    escape_arbitrary_value(&dest)
+                ))
+            } else {
+                None
+            }
+        }
+        Property::AnimationDirection(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!(
+                    "[animation-direction:{}]",
+                    escape_arbitrary_value(&dest)
+                ))
+            } else {
+                None
+            }
+        }
+        Property::AnimationFillMode(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!(
+                    "[animation-fill-mode:{}]",
+                    escape_arbitrary_value(&dest)
+                ))
+            } else {
+                None
+            }
+        }
+        Property::AnimationPlayState(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!(
+                    "[animation-play-state:{}]",
+                    escape_arbitrary_value(&dest)
+                ))
+            } else {
+                None
+            }
+        }
+        Property::AnimationDelay(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!(
+                    "[animation-delay:{}]",
+                    escape_arbitrary_value(&dest)
+                ))
+            } else {
+                None
+            }
+        }
         _ => {
             if prop_str.starts_with("content") {
                 let val = prop_str
@@ -798,5 +965,63 @@ mod tests {
             map_property(fs1rem, false, &[variant.clone()], 4.0, &vars),
             Some("text-base".to_string())
         );
+    }
+
+    #[test]
+    fn test_map_transition() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css = ".x { transition: opacity 0.3s ease-in-out; transition-property: transform; transition-duration: 200ms; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        let tr = &rules[0].rule.declarations.declarations[0];
+        let out_tr = map_property(tr, false, &[variant.clone()], 4.0, &vars).unwrap();
+        println!("out_tr: {}", out_tr);
+        assert!(out_tr.contains("transition-[opacity_0.3s_ease-in-out]"));
+
+        let tp = &rules[0].rule.declarations.declarations[1];
+        let out_tp = map_property(tp, false, &[variant.clone()], 4.0, &vars).unwrap();
+        println!("out_tp: {}", out_tp);
+        assert_eq!(out_tp, "transition-transform".to_string());
+
+        let td = &rules[0].rule.declarations.declarations[2];
+        let out_td = map_property(td, false, &[variant.clone()], 4.0, &vars).unwrap();
+        println!("out_td: {}", out_td);
+        assert_eq!(out_td, "duration-[0.2s]".to_string());
+    }
+
+    #[test]
+    fn test_map_animation() {
+        use lightningcss::stylesheet::{ParserOptions, StyleSheet};
+        let css =
+            ".x { animation: spin 1s infinite; animation-name: pulse; animation-duration: 2s; }";
+        let stylesheet = StyleSheet::parse(css, ParserOptions::default()).unwrap();
+        let parsed = crate::css::parser::ParsedStylesheet { ast: stylesheet };
+        let rules = crate::css::parser::extract_style_rules(&parsed);
+
+        let variant = TailwindVariant::default();
+        let vars = HashMap::new();
+
+        let anim = &rules[0].rule.declarations.declarations[0];
+        let out_anim = map_property(anim, false, &[variant.clone()], 4.0, &vars).unwrap();
+        println!("out_anim: {}", out_anim);
+        // lightningcss might reorder: animate-[1s_infinite_spin]
+        assert!(
+            out_anim.contains("spin") && out_anim.contains("1s") && out_anim.contains("infinite")
+        );
+
+        let an = &rules[0].rule.declarations.declarations[1];
+        let out_an = map_property(an, false, &[variant.clone()], 4.0, &vars).unwrap();
+        println!("out_an: {}", out_an);
+        assert_eq!(out_an, "animate-pulse".to_string());
+
+        let ad = &rules[0].rule.declarations.declarations[2];
+        let out_ad = map_property(ad, false, &[variant.clone()], 4.0, &vars).unwrap();
+        println!("out_ad: {}", out_ad);
+        assert_eq!(out_ad, "[animation-duration:2s]".to_string());
     }
 }

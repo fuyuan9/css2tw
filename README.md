@@ -22,7 +22,7 @@
 | **Media Queries** | `@media (min-width: ...)` | ⚠️ Partial | Maps to standard responsive breakpoints. |
 | **Pseudo Elements** | `::before`, `::after`, `::placeholder` | ✅ Supported | Supports Tailwind v4 pseudo-element syntax. |
 | **Variables** | `var(--my-color)` | ✅ Supported | Resolves variable definitions across stylesheets. |
-| **Animations** | `animation`, `transition` | ❌ Unsupported | Complex animation definitions are currently skipped. |
+| **Animations** | `animation`, `transition` | ✅ Supported | Maps standard properties to utilities or arbitrary values. |
 
 ---
 
