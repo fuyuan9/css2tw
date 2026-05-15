@@ -6,3 +6,5 @@ publish = false
 
 [dependencies]
 anyhow = { workspace = true }
+css2tw-core = { path = "../css2tw-core" }
+colored = { workspace = true }

@@ -3,6 +3,9 @@
 //! This crate provides tasks for building distributions and publishing
 //! to npm, avoiding the need for bash scripts.
 
+use colored::Colorize;
+use css2tw_core::css::parser::{build_rule_map, extract_style_rules, extract_variables, parse_css};
+use css2tw_core::rewrite::planner::ConversionPlanner;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -24,6 +27,7 @@ fn try_main() -> Result<(), DynError> {
         Some("dist") => dist()?,
         Some("publish-dry-run") => publish(true)?,
         Some("publish") => publish(false)?,
+        Some("bench-bootstrap") => bench_bootstrap()?,
         _ => print_help(),
     }
     Ok(())
@@ -35,6 +39,7 @@ fn print_help() {
 dist            Builds the project and copies the binary to npm/platforms
 publish         Publishes all packages to npm
 publish-dry-run Simulates npm publish for all packages
+bench-bootstrap Runs a conversion benchmark against Bootstrap CSS
 "
     )
 }
@@ -145,4 +150,65 @@ fn project_root() -> PathBuf {
         .nth(2)
         .unwrap()
         .to_path_buf()
+}
+
+/// Runs a conversion benchmark against Bootstrap CSS.
+fn bench_bootstrap() -> Result<(), DynError> {
+    let root = project_root();
+    let bootstrap_path = root.join("fixtures").join("benchmarks").join("bootstrap.css");
+
+    if !bootstrap_path.exists() {
+        return Err(format!(
+            "Bootstrap CSS not found at {}. Please run `curl -sSL https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.css -o {}`",
+            bootstrap_path.display(),
+            bootstrap_path.display()
+        ).into());
+    }
+
+    println!("{}", "=== Bootstrap Conversion Benchmark ===".bold().cyan());
+    println!("Loading {}...", bootstrap_path.display());
+
+    let css_content = fs::read_to_string(&bootstrap_path)?;
+    let parsed = parse_css(&css_content).map_err(|e| format!("Failed to parse CSS: {:?}", e))?;
+    let rules = extract_style_rules(&parsed);
+    let rule_map = build_rule_map(&rules);
+    let variable_map = extract_variables(&rules);
+
+    let total_classes = rule_map.len();
+    let mut safe_conversions = 0;
+    let mut partial_conversions = 0;
+    let mut failed_conversions = 0;
+
+    println!("Analyzing {} unique classes...\n", total_classes);
+
+    for class_name in rule_map.keys() {
+        let replacement = ConversionPlanner::explain(class_name, &rule_map, &variable_map, 4.0);
+
+        match replacement {
+            Some(rep) => {
+                if !rep.after.is_empty() && rep.failure_reason.is_none() && rep.confidence.score >= 1.0 {
+                    safe_conversions += 1;
+                } else if !rep.after.is_empty() {
+                    partial_conversions += 1;
+                } else {
+                    failed_conversions += 1;
+                }
+            }
+            None => {
+                failed_conversions += 1;
+            }
+        }
+    }
+
+    let safe_pct = (safe_conversions as f64 / total_classes as f64) * 100.0;
+    let partial_pct = (partial_conversions as f64 / total_classes as f64) * 100.0;
+    let failed_pct = (failed_conversions as f64 / total_classes as f64) * 100.0;
+
+    println!("{:<20} : {:>5} ({:>6.2}%)", "Safe Conversions".green(), safe_conversions, safe_pct);
+    println!("{:<20} : {:>5} ({:>6.2}%)", "Partial".yellow(), partial_conversions, partial_pct);
+    println!("{:<20} : {:>5} ({:>6.2}%)", "Failed".red(), failed_conversions, failed_pct);
+    println!("{:-<40}", "");
+    println!("{:<20} : {:>5}", "Total Classes".bold(), total_classes);
+
+    Ok(())
 }

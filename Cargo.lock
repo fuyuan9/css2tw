@@ -2170,6 +2170,8 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "colored",
+ "css2tw-core",
 ]
 
 [[package]]
