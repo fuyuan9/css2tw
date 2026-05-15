@@ -55,9 +55,9 @@ struct Cli {
     #[arg(long, global = true)]
     stdin_type: Option<String>,
 
-    /// Display diff of changes (none, unified)
-    #[arg(long, global = true, default_value = "none")]
-    diff: String,
+    /// Display diff of changes
+    #[arg(long, global = true)]
+    diff: bool,
 }
 
 #[derive(Subcommand)]
@@ -129,6 +129,24 @@ enum Commands {
     Config,
     /// Print JSON schema for reports and config
     Schema,
+    /// Detect and analyze Tailwind configuration in the current project
+    DetectConfig {
+        /// Path to the project root
+        #[arg(default_value = ".")]
+        path: String,
+    },
+    /// Run a benchmark on the project to measure conversion performance and accuracy
+    Benchmark {
+        /// Path to the directory or file to benchmark
+        #[arg(default_value = ".")]
+        path: String,
+        /// Confidence threshold for conversion (0.0 to 1.0)
+        #[arg(long, default_value = "0.7")]
+        threshold: f64,
+        /// Recursive search for files
+        #[arg(long, default_value = "true")]
+        recursive: bool,
+    },
 }
 
 /// Main entry point for the CLI application.
@@ -277,6 +295,130 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", serde_json::to_string_pretty(&combined)?);
             } else {
                 println!("{}", serde_json::to_string(&combined)?);
+            }
+        }
+        Commands::DetectConfig { path } => {
+            let result =
+                css2tw_core::tailwind::detector::ConfigDetector::detect(std::path::Path::new(path));
+            if cli.json {
+                if cli.pretty {
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                } else {
+                    println!("{}", serde_json::to_string(&result)?);
+                }
+            } else {
+                if let Some(file) = &result.file_found {
+                    println!(
+                        "{} Found Tailwind config: {}",
+                        "Success".green().bold(),
+                        file.bold()
+                    );
+                    println!("Spacing tokens: {}", result.spacing.len());
+                    println!("Color tokens:   {}", result.colors.len());
+                    println!("Screens:        {}", result.screens.len());
+                } else {
+                    println!(
+                        "{} No Tailwind config found in {}",
+                        "Warning".yellow().bold(),
+                        path
+                    );
+                }
+            }
+        }
+        Commands::Benchmark {
+            path,
+            threshold,
+            recursive: _recursive,
+        } => {
+            let start = std::time::Instant::now();
+            let paths = if std::path::Path::new(path).is_file() {
+                vec![std::path::PathBuf::from(path)]
+            } else {
+                css2tw_core::source::Scanner::scan_directory(path).unwrap_or_default()
+            };
+
+            let mut total_classes = 0;
+            let mut converted_classes = 0;
+            let mut failure_distribution = std::collections::HashMap::new();
+            let mut diagnostics_count = 0;
+
+            let source_files = css2tw_core::source::Scanner::read_files_parallel(&paths);
+            let mut css_contents = Vec::new();
+            for sf in &source_files {
+                if sf.path.ends_with(".css") {
+                    css_contents.push(sf.content.clone());
+                }
+            }
+
+            let config = css2tw_core::Config {
+                confidence_threshold: *threshold as f32,
+                ..Default::default()
+            };
+            let converter = css2tw_core::Converter::new(config);
+
+            for sf in &source_files {
+                if sf.path.ends_with(".css") {
+                    continue;
+                }
+                if let Ok(reps) = converter.plan_file(sf, &css_contents) {
+                    total_classes += reps.len();
+                    for rep in reps {
+                        if rep.failure_reason.is_none() && rep.confidence.score as f64 >= *threshold
+                        {
+                            converted_classes += 1;
+                        } else if let Some(reason) = rep.failure_reason {
+                            let reason_str = format!("{:?}", reason);
+                            *failure_distribution.entry(reason_str).or_insert(0) += 1;
+                        }
+                        diagnostics_count += rep.diagnostics.len();
+                    }
+                }
+            }
+
+            let elapsed = start.elapsed();
+            let result = css2tw_core::report::BenchmarkResult {
+                total_files: source_files.len(),
+                total_time_ms: elapsed.as_millis(),
+                avg_time_per_file_ms: if !source_files.is_empty() {
+                    elapsed.as_millis() as f64 / source_files.len() as f64
+                } else {
+                    0.0
+                },
+                total_classes_found: total_classes,
+                total_classes_converted: converted_classes,
+                conversion_rate: if total_classes > 0 {
+                    converted_classes as f64 / total_classes as f64
+                } else {
+                    0.0
+                },
+                failure_distribution,
+                diagnostics_count,
+            };
+
+            if cli.json {
+                if cli.pretty {
+                    println!("{}", serde_json::to_string_pretty(&result)?);
+                } else {
+                    println!("{}", serde_json::to_string(&result)?);
+                }
+            } else {
+                println!("\n{}", "Benchmark Results".bold().underline());
+                println!("Total Files:        {}", result.total_files);
+                println!("Total Time:         {}ms", result.total_time_ms);
+                println!("Avg Time/File:      {:.2}ms", result.avg_time_per_file_ms);
+                println!("Classes Found:      {}", result.total_classes_found);
+                println!("Classes Converted:  {}", result.total_classes_converted);
+                println!("Conversion Rate:    {:.2}%", result.conversion_rate * 100.0);
+                println!("Diagnostics issued: {}", result.diagnostics_count);
+
+                if !result.failure_distribution.is_empty() {
+                    println!("\n{}", "Failure Distribution:".bold());
+                    let mut sorted_failures: Vec<_> = result.failure_distribution.iter().collect();
+                    sorted_failures.sort_by_key(|&(_, count)| std::cmp::Reverse(*count));
+                    for (reason, count) in sorted_failures {
+                        println!("  - {:<20}: {}", reason, count);
+                    }
+                }
             }
         }
     }
@@ -458,7 +600,7 @@ fn process_migration(opts: MigrationOptions, cli: &Cli) -> anyhow::Result<()> {
                 },
                 patches: vec![],
                 patched_content: None,
-                diff: None,
+                patch: None,
             };
 
             for rep in replacements {
@@ -477,6 +619,7 @@ fn process_migration(opts: MigrationOptions, cli: &Cli) -> anyhow::Result<()> {
                         }),
                         raw_css: rep.raw_css.clone(),
                         suggestion: rep.suggestion.clone(),
+                        diagnostics: vec![],
                     });
                 } else {
                     report.summary.classes_convertible += 1;
@@ -505,12 +648,13 @@ fn process_migration(opts: MigrationOptions, cli: &Cli) -> anyhow::Result<()> {
                             },
                             raw_css: rep.raw_css.clone(),
                             suggestion: rep.suggestion.clone(),
+                            diagnostics: vec![],
                         });
                 }
             }
 
             if has_actual_replacements {
-                if cli.include_patched || opts.mode == "write" || cli.diff == "unified" {
+                if cli.include_patched || opts.mode == "write" || cli.diff {
                     let actual_replacements: Vec<_> = change_file
                         .patches
                         .iter()
@@ -527,6 +671,7 @@ fn process_migration(opts: MigrationOptions, cli: &Cli) -> anyhow::Result<()> {
                             raw_css: r.raw_css.clone(),
                             suggestion: r.suggestion.clone(),
                             failure_reason: None,
+                            diagnostics: r.diagnostics.clone(),
                         })
                         .collect();
 
@@ -537,13 +682,16 @@ fn process_migration(opts: MigrationOptions, cli: &Cli) -> anyhow::Result<()> {
                     if cli.include_patched {
                         change_file.patched_content = Some(patched.clone());
                     }
-                    if cli.diff == "unified" {
+                    if cli.diff {
                         let diff_str =
                             generate_diff(&source_file.content, &patched, &source_file.path);
                         if !cli.json && !cli.ndjson {
                             println!("{}", diff_str);
                         }
-                        change_file.diff = Some(diff_str);
+                        change_file.patch = Some(css2tw_core::report::Patch {
+                            format: "unified".to_string(),
+                            content: diff_str,
+                        });
                     }
                     if opts.mode == "write" && !is_stdin {
                         if let Err(e) = std::fs::write(&source_file.path, patched) {

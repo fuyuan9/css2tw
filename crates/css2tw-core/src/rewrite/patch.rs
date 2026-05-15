@@ -28,6 +28,8 @@ pub struct Replacement {
     pub suggestion: Option<String>,
     /// Standardized reason if the conversion failed or has low confidence.
     pub failure_reason: Option<crate::report::FailureReason>,
+    /// Detailed diagnostics for AI agents.
+    pub diagnostics: Vec<crate::report::Diagnostic>,
 }
 
 /// Applies a list of replacements to a source string.

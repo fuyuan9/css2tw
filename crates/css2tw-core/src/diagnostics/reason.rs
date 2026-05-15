@@ -18,8 +18,16 @@ pub enum Reason {
     MultipleClassDependency,
     UnknownTailwindThemeValue,
     ParseError,
-    // Add positive reasons
+    // Positive reasons
     AllDeclarationsMapped,
     SimpleClassSelector,
     PseudoClassHoverMapped,
+    // Task 2 additions
+    UnsupportedVariant,
+    DynamicTemplateLiteral,
+    RequiresSemanticToken,
+    RequiresTailwindConfigExtension,
+    AmbiguousResponsiveRule,
+    ArbitraryValueFallback,
+    CompoundSpecificityConflict,
 }

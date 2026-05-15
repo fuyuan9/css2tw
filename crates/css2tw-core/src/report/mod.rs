@@ -73,9 +73,18 @@ pub struct ChangeFile {
     /// Only included if explicitly requested via CLI flags.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub patched_content: Option<String>,
-    /// A unified diff string representing the changes in this file.
+    /// A structured patch representing the changes in this file.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub diff: Option<String>,
+    pub patch: Option<Patch>,
+}
+
+/// A structured patch for a file.
+#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+pub struct Patch {
+    /// The format of the patch (e.g., "unified").
+    pub format: String,
+    /// The content of the patch.
+    pub content: String,
 }
 
 /// Details of a single class replacement.
@@ -103,6 +112,36 @@ pub struct ReplacementReport {
     /// A suggested course of action if manual intervention is needed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suggestion: Option<String>,
+    /// Detailed diagnostics for AI agents.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+/// A structured diagnostic message for machine-readability.
+#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+pub struct Diagnostic {
+    /// The severity level of the diagnostic.
+    pub severity: Severity,
+    /// Whether the issue is automatically recoverable.
+    pub recoverable: bool,
+    /// Whether the issue requires manual action from a human.
+    pub manual_action_required: bool,
+    /// A machine-readable reason code.
+    pub reason: String,
+    /// A human-readable detailed message.
+    pub message: String,
+}
+
+/// Severity levels for diagnostics.
+#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Severity {
+    /// Informational message.
+    Info,
+    /// Warning that should be reviewed.
+    Warning,
+    /// Critical error that prevented conversion.
+    Error,
 }
 
 /// Detailed confidence score and reasons for a replacement.
@@ -160,6 +199,14 @@ pub enum FailureReason {
     UnsafeSpecificity,
     /// No mapping was found for this selector or property.
     NoMappingFound,
+    /// Task 2 additions
+    UnsupportedVariant,
+    DynamicTemplateLiteral,
+    RequiresSemanticToken,
+    RequiresTailwindConfigExtension,
+    AmbiguousResponsiveRule,
+    ArbitraryValueFallback,
+    CompoundSpecificityConflict,
 }
 
 impl std::fmt::Display for FailureReason {
@@ -172,6 +219,13 @@ impl std::fmt::Display for FailureReason {
             FailureReason::DynamicClass => "DynamicClass",
             FailureReason::UnsafeSpecificity => "UnsafeSpecificity",
             FailureReason::NoMappingFound => "NoMappingFound",
+            FailureReason::UnsupportedVariant => "UnsupportedVariant",
+            FailureReason::DynamicTemplateLiteral => "DynamicTemplateLiteral",
+            FailureReason::RequiresSemanticToken => "RequiresSemanticToken",
+            FailureReason::RequiresTailwindConfigExtension => "RequiresTailwindConfigExtension",
+            FailureReason::AmbiguousResponsiveRule => "AmbiguousResponsiveRule",
+            FailureReason::ArbitraryValueFallback => "ArbitraryValueFallback",
+            FailureReason::CompoundSpecificityConflict => "CompoundSpecificityConflict",
         };
         write!(f, "{}", s)
     }
@@ -197,6 +251,22 @@ pub struct Unconverted {
     /// A suggested course of action (e.g., "Use arbitrary values").
     #[serde(skip_serializing_if = "Option::is_none")]
     pub suggestion: Option<String>,
+    /// Detailed diagnostics for AI agents.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+/// Results of a benchmark run.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+pub struct BenchmarkResult {
+    pub total_files: usize,
+    pub total_time_ms: u128,
+    pub avg_time_per_file_ms: f64,
+    pub total_classes_found: usize,
+    pub total_classes_converted: usize,
+    pub conversion_rate: f64,
+    pub failure_distribution: std::collections::HashMap<String, usize>,
+    pub diagnostics_count: usize,
 }
 
 #[cfg(test)]
@@ -241,9 +311,10 @@ mod tests {
                     trace: vec![],
                     raw_css: None,
                     suggestion: None,
+                    diagnostics: vec![],
                 }],
                 patched_content: None,
-                diff: None,
+                patch: None,
             }],
             unconverted: vec![],
             warnings: vec![],

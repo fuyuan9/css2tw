@@ -6,4 +6,5 @@
 pub mod mapping;
 pub use mapping::map_property;
 
+pub mod detector;
 pub mod variant;

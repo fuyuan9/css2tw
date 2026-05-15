@@ -10,19 +10,16 @@
 
 `css2tw` supports many core CSS properties, but some complex features are currently under development or require manual verification.
 
-| Category | Property Examples | Status | Notes |
-| :--- | :--- | :--- | :--- |
-| **Colors** | `color`, `background-color`, `border-color` | ✅ Supported | Supports both standard colors and arbitrary values (`[...]`). |
-| **Spacing** | `margin`, `padding`, `gap` | ✅ Supported | Supports `rem` conversion and negative values. |
-| **Sizing** | `width`, `height`, `min-width` | ✅ Supported | Supports `rem` and `px` unit conversion. |
-| **Display** | `display: flex`, `grid`, `none` | ✅ Supported | Maps core layout modes to Tailwind utilities. |
-| **Position** | `absolute`, `relative`, `fixed`, `sticky` | ✅ Supported | Maps standard positioning to utilities. |
-| **Typography** | `font-size`, `font-weight`, `line-height` | ✅ Supported | Maps to standard scales or arbitrary values. |
-| **Border** | `border-radius`, `border-width`, `border-style` | ✅ Supported | Decomposes shorthand properties for conversion. |
-| **Media Queries** | `@media` (min/max, dark, print, etc.) | ✅ Supported | Maps to breakpoints, dark:, print:, and more. |
-| **Pseudo Elements** | `::before`, `::after`, `::placeholder` | ✅ Supported | Supports Tailwind v4 pseudo-element syntax. |
-| **Variables** | `var(--my-color)` | ✅ Supported | Resolves variable definitions across stylesheets. |
-| **Animations** | `animation`, `transition` | ✅ Supported | Maps standard properties to utilities or arbitrary values. |
+| Category | Status | Notes |
+| :--- | :--- | :--- |
+| **margin/padding** | ✅ supported | full spacing scale mapping |
+| **pseudo-class** | ⚠️ partial | hover/focus/active/disabled supported |
+| **pseudo-element** | ✅ supported | before/after/placeholder (v4 syntax) |
+| **media query** | ⚠️ partial | breakpoint mapping (sm/md/lg/xl/2xl) only |
+| **CSS variables** | ⚠️ partial | requires explicit definition or token inference |
+| **complex selectors** | 🚫 unsupported | combinators (+, ~, >) are rejected for safety |
+| **animations** | ⚠️ partial | standard transitions and animations only |
+| **dynamic classes** | ⚠️ unsafe | detected and reported, not auto-fixed |
 
 ---
 
@@ -259,6 +256,18 @@ In essence, a "Partial" result is no longer a sign of tool limitation, but a **p
 ```bash
 cargo run --bin css2tw -- <command> [args]
 ```
+
+## 🛡️ Stability Guarantees
+
+As a substrate for AI migration, `css2tw` provides the following guarantees:
+
+- **Deterministic Output**: Given the same input files and configuration, the output (JSON and patched source) will be bit-identical across runs.
+- **JSON Schema Versioning**: We follow SemVer for our JSON report schema. Breaking changes to the schema will result in a major version bump.
+- **Confidence Semantics**:
+    - `1.0 (Safe)`: Mechanical mapping with no side effects.
+    - `0.8 - 0.9 (Suggested)`: High confidence, but might require visual check.
+    - `< 0.8 (Unsafe)`: Low confidence or partial mapping. Requires human review.
+- **Backward Compatibility**: CLI flags and configuration options will remain compatible within a major version.
 
 ## Contributing
 

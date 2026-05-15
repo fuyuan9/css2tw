@@ -254,7 +254,10 @@ fn bench_uikit() -> Result<(), DynError> {
 
 fn bench_semantic() -> Result<(), DynError> {
     let root = project_root();
-    let path = root.join("fixtures").join("benchmarks").join("semantic.css");
+    let path = root
+        .join("fixtures")
+        .join("benchmarks")
+        .join("semantic.css");
     run_benchmark("Semantic UI", &path)
 }
 

@@ -138,6 +138,7 @@ impl ConversionPlanner {
             raw_css,
             suggestion,
             failure_reason,
+            diagnostics: vec![],
         })
     }
 }

@@ -120,6 +120,11 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
                                     ));
                                 }
                             }
+                        } else if let Some(JSXAttributeValue::ExpressionContainer(expr_container)) =
+                            &attr.value
+                        {
+                            // Task 4: Dynamic class detection
+                            self.detect_dynamic_patterns(expr_container);
                         }
                     }
                 }
@@ -157,6 +162,87 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
 
         // Continue visiting children
         oxc_ast_visit::walk::walk_jsx_opening_element(self, elem);
+    }
+}
+
+impl<'a, 'i> JsxPlanVisitor<'i, 'a> {
+    fn detect_dynamic_patterns(&mut self, expr_container: &JSXExpressionContainer<'a>) {
+        match &expr_container.expression {
+            JSXExpression::CallExpression(call) => {
+                if let Expression::Identifier(ident) = &call.callee {
+                    let name = ident.name.as_str();
+                    if name == "clsx" || name == "classNames" || name == "cva" {
+                        self.add_dynamic_replacement(
+                            call.span(),
+                            format!("Dynamic class library detected: {}", name),
+                            crate::report::FailureReason::DynamicClass,
+                        );
+                    }
+                }
+            }
+            JSXExpression::TemplateLiteral(lit) => {
+                self.add_dynamic_replacement(
+                    lit.span(),
+                    "Dynamic template literal detected in className".to_string(),
+                    crate::report::FailureReason::DynamicTemplateLiteral,
+                );
+            }
+            JSXExpression::ConditionalExpression(cond) => {
+                self.add_dynamic_replacement(
+                    cond.span(),
+                    "Conditional JSX className detected".to_string(),
+                    crate::report::FailureReason::DynamicClass,
+                );
+            }
+            JSXExpression::ArrayExpression(arr) => {
+                self.add_dynamic_replacement(
+                    arr.span(),
+                    "Array join pattern detected in className".to_string(),
+                    crate::report::FailureReason::DynamicClass,
+                );
+            }
+            JSXExpression::EmptyExpression(_) => {}
+            _ => {
+                // General dynamic expression
+                self.add_dynamic_replacement(
+                    expr_container.expression.span(),
+                    "Complex dynamic expression detected in className".to_string(),
+                    crate::report::FailureReason::DynamicClass,
+                );
+            }
+        }
+    }
+
+    fn add_dynamic_replacement(
+        &mut self,
+        span: oxc_span::Span,
+        message: String,
+        reason: crate::report::FailureReason,
+    ) {
+        self.replacements.push(Replacement {
+            span: Span {
+                start: span.start as usize,
+                end: span.end as usize,
+            },
+            before: "".to_string(), // We don't have a single "before" string for complex exprs
+            after: "".to_string(),
+            confidence: crate::report::ConfidenceReport {
+                score: 0.0,
+                reasons: vec![],
+            },
+            reasons: vec![message.clone()],
+            trace: vec![format!("Dynamic detection: {}", message)],
+            raw_css: None,
+            suggestion: Some("Manually migrate dynamic classes to Tailwind utilities.".to_string()),
+            failure_reason: Some(reason),
+            diagnostics: vec![crate::report::Diagnostic {
+                severity: crate::report::Severity::Warning,
+                recoverable: false,
+                manual_action_required: true,
+                reason: format!("{:?}", reason),
+                message,
+            }],
+        });
     }
 }
 

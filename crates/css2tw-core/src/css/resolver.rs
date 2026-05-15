@@ -197,6 +197,7 @@ impl<'i> ResolvedElementStyle<'i> {
             raw_css,
             suggestion,
             failure_reason,
+            diagnostics: vec![],
         }
     }
 }
