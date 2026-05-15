@@ -154,11 +154,21 @@ fn run_npm_publish(dir: &Path, dry_run: bool) -> Result<(), DynError> {
         if dry_run { "Dry-run" } else { "Real" },
         dir.display()
     );
-    let status = Command::new("npm").current_dir(dir).args(&args).status()?;
+    let output = Command::new("npm")
+        .current_dir(dir)
+        .args(&args)
+        .output()?;
 
-    if !status.success() {
-        return Err(format!("npm publish failed in {}", dir.display()).into());
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("You cannot publish over the previously published versions") {
+            println!("Package already published, skipping...");
+            return Ok(());
+        }
+        return Err(format!("npm publish failed in {}: {}", dir.display(), stderr).into());
     }
+
+    println!("{}", String::from_utf8_lossy(&output.stdout));
     Ok(())
 }
 
