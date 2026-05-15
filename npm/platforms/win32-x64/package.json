@@ -1,6 +1,6 @@
 {
   "name": "@fuyuan9/css2tw-win32-x64",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Prebuilt binary for css2tw on win32-x64",
   "publishConfig": {
     "access": "public"

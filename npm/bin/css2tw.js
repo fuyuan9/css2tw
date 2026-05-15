@@ -11,10 +11,10 @@ const arch = process.arch;
 
 // Mapping of platform/arch to package names
 const pkgMap = {
-  'darwin-arm64': 'css2tw-darwin-arm64',
-  'darwin-x64': 'css2tw-darwin-x64',
-  'linux-x64': 'css2tw-linux-x64',
-  'win32-x64': 'css2tw-win32-x64'
+  'darwin-arm64': '@fuyuan9/css2tw-darwin-arm64',
+  'darwin-x64': '@fuyuan9/css2tw-darwin-x64',
+  'linux-x64': '@fuyuan9/css2tw-linux-x64',
+  'win32-x64': '@fuyuan9/css2tw-win32-x64'
 };
 
 const key = `${platform}-${arch}`;
