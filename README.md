@@ -34,6 +34,7 @@
 - **📝 Conversion Tracing:** Provides a detailed "trace" for each conversion, explaining exactly which CSS rules led to the resulting Tailwind classes.
 - **🔍 Element-Aware Resolution:** Correctly resolves styles by matching HTML/JSX elements against CSS rules using full document context.
 - **🚫 Tag Selector Filtering:** Automatically ignores styles from selectors without classes or IDs (e.g., `div`, `p`, `*`, `:root`) by default to prevent global base styles from polluting component-level classes. Use `--include-tag-selectors` to include them.
+- **⚙️ Config Discovery:** Automatically detects and extracts custom Tailwind themes (spacing, colors, screens) from `tailwind.config.{js,ts}` files.
 - **📏 Configurable Theme:** Inject custom Tailwind theme values (colors, spacing) directly into the engine via CLI or JSON config.
 - **💉 Explicit CSS Injection:** To ensure deterministic behavior, CSS definitions must be explicitly provided. Automatic scanning is disabled by default to prioritize control.
 - **📸 Visual Regression Testing:** Built-in utilities to initialize Playwright-based VRT to verify migration safety without breaking the UI.
@@ -113,6 +114,15 @@ Run the dedicated MCP server to allow AI agents to control `css2tw` directly.
 css2tw-mcp
 ```
 
+### 7. Tailwind Configuration Discovery
+
+Automatically detect and extract Tailwind configuration (spacing, colors, etc.) from your project.
+
+```bash
+# Output theme configuration as JSON
+css2tw detect-config . --json
+```
+
 ## 🛠️ CLI Reference
 
 ### Global Options
@@ -126,10 +136,12 @@ These options are available for all commands.
 - `--pretty`: Pretty-print JSON output (human-readable).
 - `--trace`: Include the detailed conversion trace in the output. **Disabled by default to save tokens.**
 - `--reasons`: Include specific reasons for conversion results in the output. **Disabled by default.**
+- `--stdin`: Read source content from standard input (uses `stdin.html` or `--stdin-type`).
 - `--include-patched`: Include the full converted source code in the JSON report.
 - `--ndjson`: Output result as a stream of JSON objects (Newline Delimited JSON). Ideal for large-scale migrations.
 - `--file-only [PATH]`: Filter detailed JSON reports to specific files (repeatable).
-- `--stdin`: Read source content from standard input (uses `stdin.html` or `--stdin-type`).
+- `--diff`: Include the `patch` field (Unified Diff format) in the JSON report for each converted file.
+- `--diagnostics`: Include detailed diagnostics for unconverted items (e.g., dynamic class patterns).
 
 ### Commands
 
@@ -166,6 +178,26 @@ Explain how a specific CSS class selector would be converted to Tailwind.
 - `<SELECTOR>`: The CSS class selector to explain (e.g., `.btn-primary`).
 - `--css <PATH>`: **Required.** Path to the CSS file containing the selector definition.
 
+#### `benchmark [PATH]`
+
+Run a benchmark on the project to measure conversion performance and accuracy. Returns aggregate statistics and failure distribution.
+
+- `[PATH]`: Path to the directory or file to benchmark.
+- `--threshold <VALUE>`: Confidence threshold for conversion. Default: `0.7`.
+- `--recursive`: Recursive search for files. Default: `true`.
+
+#### `detect-config [PATH]`
+
+Detect and analyze Tailwind configuration (spacing, colors, screens) in the current project by parsing `tailwind.config.{js,ts}` files.
+
+- `[PATH]`: Path to the project root. Defaults to `.`.
+
+#### `vrt init`
+
+Initialize a Playwright-based Visual Regression Testing setup in the current directory.
+
+- `--url <URL>`: Target URL for capture (e.g., http://localhost:3000).
+
 #### `config`
 
 Print the resolved configuration that `css2tw` is currently using. Outputs in JSON format when `--json` is specified.
@@ -179,8 +211,10 @@ Print the JSON Schema for reports and configuration files. Outputs in JSON forma
 `css2tw` is architected from the ground up to be called by AI agents (like GitHub Copilot, Cursor, or custom LLM-based tools). 
 
 - **✅ Stable Output:** Use `css2tw schema` to get the latest report format.
-- **✅ Traceability:** Each conversion record includes a `trace` field with step-by-step reasoning.
-- **✅ Context Injection:** Agents can inject extracted `tailwind.config.js` context directly into the conversion engine.
+- **✅ MCP Support:** Connect AI agents via [Model Context Protocol](https://modelcontextprotocol.io/) for direct tool-based interaction.
+- **✅ Structured Patch:** Consume the `patch` field (Unified Diff) for safe, mechanical application of changes.
+- **✅ Machine Diagnostics:** Identify dynamic class patterns (clsx, template literals) via structured `diagnostics`.
+- **✅ Theme Awareness:** Agents can use `detect-config` to synchronize their internal Tailwind knowledge with the project's custom theme.
 - **✅ Non-Interactive:** Perfect for automated pipelines and agentic loops.
 
 Refer to [docs/agent-prompts.md](docs/agent-prompts.md) for detailed integration patterns and prompt examples.
