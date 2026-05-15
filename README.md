@@ -227,7 +227,21 @@ cargo xtask bench-bootstrap-v4   # Bootstrap 4.6
 cargo xtask bench-bootstrap-v3   # Bootstrap 3.4
 cargo xtask bench-bulma-v0       # Bulma 0.9
 cargo xtask bench-bulma-v1       # Bulma 1.0 (Latest)
+cargo xtask bench-foundation    # Foundation 6.9
+cargo xtask bench-skeleton      # Skeleton 2.0
 ```
+
+#### Latest Benchmark Results
+
+| Framework | Version | Safe Conversions | Total Classes | Note |
+| :--- | :--- | :--- | :--- | :--- |
+| **Bootstrap** | v5.3 | **82.40%** | 1,909 | Modern CSS with heavy variable usage |
+| **Bootstrap** | v4.6 | **99.17%** | 1,326 | Excellent compatibility |
+| **Bootstrap** | v3.4 | **99.86%** | 705 | Near perfect conversion |
+| **Bulma** | v0.9 | **99.82%** | 543 | High compatibility |
+| **Bulma** | v1.0 | **26.64%** | 1,772 | Deeply nested CSS variable dependencies |
+| **Foundation** | v6.9 | **99.33%** | 299 | Complex grid and layout logic |
+| **Skeleton** | v2.0 | **100.00%** | 37 | Minimalist baseline |
 
 ### Local Execution
 ```bash

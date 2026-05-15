@@ -32,6 +32,8 @@ fn try_main() -> Result<(), DynError> {
         Some("bench-bootstrap-v3") => bench_bootstrap_v3()?,
         Some("bench-bulma") | Some("bench-bulma-v0") => bench_bulma_v0()?,
         Some("bench-bulma-v1") => bench_bulma_v1()?,
+        Some("bench-foundation") => bench_foundation()?,
+        Some("bench-skeleton") => bench_skeleton()?,
         Some("bench-all") => bench_all()?,
         _ => print_help(),
     }
@@ -49,6 +51,8 @@ bench-bootstrap-v4  Runs benchmark against Bootstrap v4
 bench-bootstrap-v3  Runs benchmark against Bootstrap v3
 bench-bulma-v0      Runs benchmark against Bulma v0.9
 bench-bulma-v1      Runs benchmark against Bulma v1.0
+bench-foundation    Runs benchmark against Foundation v6
+bench-skeleton      Runs benchmark against Skeleton v2
 bench-all           Runs all benchmarks and shows a summary
 "
     )
@@ -170,6 +174,8 @@ fn bench_all() -> Result<(), DynError> {
     bench_bootstrap_v3()?;
     bench_bulma_v0()?;
     bench_bulma_v1()?;
+    bench_foundation()?;
+    bench_skeleton()?;
     println!(
         "{}",
         "\nAll benchmarks completed successfully!".bold().green()
@@ -214,6 +220,24 @@ fn bench_bulma_v1() -> Result<(), DynError> {
     let root = project_root();
     let path = root.join("fixtures").join("benchmarks").join("bulma1.css");
     run_benchmark("Bulma v1.0", &path)
+}
+
+fn bench_foundation() -> Result<(), DynError> {
+    let root = project_root();
+    let path = root
+        .join("fixtures")
+        .join("benchmarks")
+        .join("foundation.css");
+    run_benchmark("Foundation v6", &path)
+}
+
+fn bench_skeleton() -> Result<(), DynError> {
+    let root = project_root();
+    let path = root
+        .join("fixtures")
+        .join("benchmarks")
+        .join("skeleton.css");
+    run_benchmark("Skeleton v2", &path)
 }
 
 /// Generic benchmark runner.
