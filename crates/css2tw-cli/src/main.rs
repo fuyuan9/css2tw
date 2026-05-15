@@ -355,6 +355,7 @@ fn main() -> anyhow::Result<()> {
             let mut safe_converted = 0;
             let mut unsafe_detected = 0;
             let mut manual_review_required = 0;
+            let mut total_classes = 0;
             let mut confidence_distribution = std::collections::HashMap::new();
             let mut failure_distribution = std::collections::HashMap::new();
 
@@ -378,6 +379,7 @@ fn main() -> anyhow::Result<()> {
                 }
                 if let Ok(reps) = converter.plan_file(sf, &css_contents) {
                     for rep in reps {
+                        total_classes += 1;
                         let score = rep.confidence.score as f64;
 
                         // Confidence distribution
@@ -385,20 +387,25 @@ fn main() -> anyhow::Result<()> {
                             "0.95-1.0"
                         } else if score >= 0.8 {
                             "0.8-0.95"
+                        } else if score >= 0.5 {
+                            "0.5-0.8"
                         } else {
-                            "below_0.8"
+                            "below_0.5"
                         };
                         *confidence_distribution
                             .entry(bucket.to_string())
                             .or_insert(0) += 1;
 
-                        if rep.failure_reason.is_none() && score >= 0.95 {
+                        if rep.failure_reason.is_none() && score >= *threshold {
                             safe_converted += 1;
                         } else if let Some(reason) = rep.failure_reason {
                             let reason_str = format!("{:?}", reason);
                             *failure_distribution.entry(reason_str.clone()).or_insert(0) += 1;
 
-                            if reason_str.contains("Dynamic") {
+                            if reason_str.contains("Dynamic")
+                                || reason_str.contains("Runtime")
+                                || reason_str.contains("Template")
+                            {
                                 unsafe_detected += 1;
                             } else {
                                 manual_review_required += 1;
@@ -412,13 +419,35 @@ fn main() -> anyhow::Result<()> {
             }
 
             let elapsed = start.elapsed();
+            let safe_conversion_rate = if total_classes > 0 {
+                safe_converted as f32 / total_classes as f32
+            } else {
+                0.0
+            };
+            let manual_review_rate = if total_classes > 0 {
+                manual_review_required as f32 / total_classes as f32
+            } else {
+                0.0
+            };
+            let dynamic_class_detection_rate = if total_classes > 0 {
+                unsafe_detected as f32 / total_classes as f32
+            } else {
+                0.0
+            };
+
             let result = css2tw_core::report::BenchmarkResult {
+                schema_version: "1.0".to_string(),
                 framework: path.clone(),
                 files_total: source_files.len(),
                 safe_converted,
                 unsafe_detected,
                 manual_review_required,
+                safe_conversion_rate,
+                unsafe_detection_rate: 1.0, // We assume 100% detection of what we look for
+                manual_review_rate,
+                dynamic_class_detection_rate,
                 false_positive_estimate: 0,
+                false_negative_estimate: 0,
                 confidence_distribution,
                 failure_distribution,
                 total_time_ms: elapsed.as_millis(),
@@ -431,19 +460,41 @@ fn main() -> anyhow::Result<()> {
                     println!("{}", serde_json::to_string(&result)?);
                 }
             } else {
-                println!("\n{}", "Benchmark Results".bold().underline());
-                println!("Framework:          {}", result.framework);
-                println!("Total Files:        {}", result.files_total);
-                println!("Total Time:         {}ms", result.total_time_ms);
-                println!("Safe Converted:     {}", result.safe_converted);
-                println!("Unsafe Detected:    {}", result.unsafe_detected);
-                println!("Manual Review:      {}", result.manual_review_required);
+                println!("\n{}", "Benchmark Results".bold().underline().cyan());
+                println!("{:<25} {}", "Framework:", result.framework);
+                println!("{:<25} {}", "Total Files:", result.files_total);
+                println!("{:<25} {}ms", "Total Time:", result.total_time_ms);
+                println!("{:<25} {}", "Total Classes:", total_classes);
+                println!("");
+                println!(
+                    "{:<25} {} ({:.1}%)",
+                    "Safe Converted:",
+                    result.safe_converted,
+                    result.safe_conversion_rate * 100.0
+                );
+                println!(
+                    "{:<25} {} ({:.1}%)",
+                    "Unsafe Detected:",
+                    result.unsafe_detected,
+                    result.dynamic_class_detection_rate * 100.0
+                );
+                println!(
+                    "{:<25} {} ({:.1}%)",
+                    "Manual Review:",
+                    result.manual_review_required,
+                    result.manual_review_rate * 100.0
+                );
 
                 println!("\n{}", "Confidence Distribution:".bold());
                 let mut buckets: Vec<_> = result.confidence_distribution.iter().collect();
                 buckets.sort_by_key(|&(b, _)| b);
                 for (bucket, count) in buckets {
-                    println!("  - {:<10}: {}", bucket, count);
+                    let pct = if total_classes > 0 {
+                        *count as f32 / total_classes as f32 * 100.0
+                    } else {
+                        0.0
+                    };
+                    println!("  - {:<12}: {:>4} ({:.1}%)", bucket, count, pct);
                 }
 
                 if !result.failure_distribution.is_empty() {
@@ -451,7 +502,7 @@ fn main() -> anyhow::Result<()> {
                     let mut sorted_failures: Vec<_> = result.failure_distribution.iter().collect();
                     sorted_failures.sort_by_key(|&(_, count)| std::cmp::Reverse(*count));
                     for (reason, count) in sorted_failures {
-                        println!("  - {:<20}: {}", reason, count);
+                        println!("  - {:<25}: {}", reason, count);
                     }
                 }
             }

@@ -1,0 +1,77 @@
+{
+  "diagnostics": [
+    {
+      "location": {
+        "column": 8,
+        "file": "svelte.svelte",
+        "line": 9
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute class:active detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 32,
+        "file": "svelte.svelte",
+        "line": 9
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute class:large detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 8,
+        "file": "svelte.svelte",
+        "line": 14
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute class:isError detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    }
+  ],
+  "file": "svelte.svelte",
+  "replacements": [
+    {
+      "after": "",
+      "before": "isActive",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 174,
+        "start": 151
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "size === 'large'",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 205,
+        "start": 175
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 301,
+        "start": 288
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    }
+  ],
+  "unconverted_count": 3
+}

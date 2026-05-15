@@ -69,20 +69,26 @@ impl HtmlParser {
         // Track current position in source to handle multiple elements with same classes
         let mut current_search_pos = 0;
 
-        // Detect dynamic bindings first using regex to report them
+        // Detect dynamic bindings (v-bind, :class, [class], [ngClass], class:...)
         let dynamic_re = Regex::new(
-            r#"(?i)(v-bind:class|:class|\[class\]|\[ngClass\])\s*=\s*(?:"([^"]*)"|'([^']*)')"#,
+            r#"(?i)(v-bind:class|:class|\[class\]|\[ngClass\]|class:[a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*)\}))?"#,
         )
         .unwrap();
         for cap in dynamic_re.captures_iter(&source.content) {
             let attr_name = cap.get(1).unwrap().as_str();
-            let match_val = cap.get(2).or_else(|| cap.get(3)).unwrap();
-            let start = match_val.start();
-            let end = match_val.end();
+            let match_val = cap.get(2).or_else(|| cap.get(3)).or_else(|| cap.get(4));
+
+            let start = cap.get(0).unwrap().start();
+            let end = cap.get(0).unwrap().end();
+            let before_val = match_val
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_else(|| "".to_string());
+
+            let (line, column) = source.line_col(start);
 
             replacements.push(Replacement {
                 span: Span { start, end },
-                before: match_val.as_str().to_string(),
+                before: before_val,
                 after: "".to_string(),
                 confidence: crate::report::ConfidenceReport {
                     score: 0.0,
@@ -102,6 +108,11 @@ impl HtmlParser {
                         "Dynamic attribute {} detected. Auto-conversion skipped for safety.",
                         attr_name
                     ),
+                    location: Some(crate::report::Location {
+                        file: source.path.clone(),
+                        line,
+                        column,
+                    }),
                 }],
             });
         }

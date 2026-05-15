@@ -1,0 +1,54 @@
+{
+  "diagnostics": [
+    {
+      "location": {
+        "column": 18,
+        "file": "generic.ts",
+        "line": 17
+      },
+      "manual_action_required": true,
+      "message": "Dynamic function call assigned to class-like variable 'classes1'",
+      "reason": "RuntimeClassGeneration",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 18,
+        "file": "generic.ts",
+        "line": 18
+      },
+      "manual_action_required": true,
+      "message": "Dynamic function call assigned to class-like variable 'classes2'",
+      "reason": "RuntimeClassGeneration",
+      "recoverable": false,
+      "severity": "warning"
+    }
+  ],
+  "file": "generic.ts",
+  "replacements": [
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "RuntimeClassGeneration",
+      "span": {
+        "end": 414,
+        "start": 389
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "RuntimeClassGeneration",
+      "span": {
+        "end": 496,
+        "start": 433
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    }
+  ],
+  "unconverted_count": 2
+}

@@ -130,6 +130,20 @@ pub struct Diagnostic {
     pub reason: String,
     /// A human-readable detailed message.
     pub message: String,
+    /// Detailed location information.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<Location>,
+}
+
+/// Detailed location information for diagnostics.
+#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+pub struct Location {
+    /// Path to the source file.
+    pub file: String,
+    /// 1-indexed line number.
+    pub line: usize,
+    /// 1-indexed column number.
+    pub column: usize,
 }
 
 /// Severity levels for diagnostics.
@@ -272,18 +286,30 @@ pub struct Unconverted {
 /// Results of a benchmark run.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 pub struct BenchmarkResult {
+    /// Schema version for the benchmark result.
+    pub schema_version: String,
     /// Name of the framework or project being benchmarked.
     pub framework: String,
     /// Total number of files processed.
     pub files_total: usize,
-    /// Number of classes that were safely converted.
+    /// Number of classes that were safely converted (high confidence).
     pub safe_converted: usize,
     /// Number of unsafe patterns detected (e.g. dynamic classes).
     pub unsafe_detected: usize,
     /// Number of items requiring manual review.
     pub manual_review_required: usize,
-    /// Estimated false positive count (usually 0 for deterministic tool).
+    /// Ratio of safe conversions to total detected class usages.
+    pub safe_conversion_rate: f32,
+    /// Ratio of dynamic/unsafe patterns correctly identified.
+    pub unsafe_detection_rate: f32,
+    /// Ratio of items flagged for manual review.
+    pub manual_review_rate: f32,
+    /// Ratio of dynamic classes detected vs total classes.
+    pub dynamic_class_detection_rate: f32,
+    /// Estimated false positive count (should be 0 for deterministic tool).
     pub false_positive_estimate: usize,
+    /// Estimated false negative count (missing dynamic patterns).
+    pub false_negative_estimate: usize,
     /// Distribution of confidence scores.
     pub confidence_distribution: std::collections::HashMap<String, usize>,
     /// Statistical counts of different failure reasons.

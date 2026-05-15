@@ -97,6 +97,53 @@ impl FragmentParser {
                 offset = start + placeholder.len();
             }
         }
+        // 1.5 Detect dynamic bindings (v-bind, :class, [class], [ngClass], class:...)
+        let dynamic_re = Regex::new(
+            r#"(?i)(v-bind:class|:class|\[class\]|\[ngClass\]|class:[a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*)\}))?"#,
+        )
+        .unwrap();
+        for cap in dynamic_re.captures_iter(&source.content) {
+            let attr_name = cap.get(1).unwrap().as_str();
+            let match_val = cap.get(2).or_else(|| cap.get(3)).or_else(|| cap.get(4));
+
+            let start = cap.get(0).unwrap().start();
+            let end = cap.get(0).unwrap().end();
+            let before_val = match_val
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_else(|| "".to_string());
+
+            let (line, column) = source.line_col(start);
+
+            replacements.push(Replacement {
+                span: Span { start, end },
+                before: before_val,
+                after: "".to_string(),
+                confidence: crate::report::ConfidenceReport {
+                    score: 0.0,
+                    reasons: vec![],
+                },
+                reasons: vec![format!("Dynamic binding detected: {}", attr_name)],
+                trace: vec![format!("Regex match in fragment: {}", attr_name)],
+                raw_css: None,
+                suggestion: Some("Manually migrate dynamic bindings to Tailwind.".to_string()),
+                failure_reason: Some(crate::report::FailureReason::DynamicClass),
+                diagnostics: vec![crate::report::Diagnostic {
+                    severity: crate::report::Severity::Warning,
+                    recoverable: false,
+                    manual_action_required: true,
+                    reason: "DynamicClass".to_string(),
+                    message: format!(
+                        "Dynamic attribute {} detected in fragment. Auto-conversion skipped for safety.",
+                        attr_name
+                    ),
+                    location: Some(crate::report::Location {
+                        file: source.path.clone(),
+                        line,
+                        column,
+                    }),
+                }],
+            });
+        }
 
         // 2. Parse the protected content with scraper
         let fragment = Html::parse_fragment(&protected_content);

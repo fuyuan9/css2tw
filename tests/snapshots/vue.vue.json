@@ -1,0 +1,238 @@
+{
+  "diagnostics": [
+    {
+      "location": {
+        "column": 14,
+        "file": "vue.vue",
+        "line": 3
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute :class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 10,
+        "file": "vue.vue",
+        "line": 4
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute :class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 14,
+        "file": "vue.vue",
+        "line": 8
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute :class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 10,
+        "file": "vue.vue",
+        "line": 9
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute :class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 23,
+        "file": "vue.vue",
+        "line": 14
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute :class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 10,
+        "file": "vue.vue",
+        "line": 19
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute :class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 10,
+        "file": "vue.vue",
+        "line": 24
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute :class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 10,
+        "file": "vue.vue",
+        "line": 28
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute v-bind:class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 10,
+        "file": "vue.vue",
+        "line": 29
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute v-bind:class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 7,
+        "file": "vue.vue",
+        "line": 30
+      },
+      "manual_action_required": true,
+      "message": "Dynamic attribute v-bind:class detected in fragment. Auto-conversion skipped for safety.",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    }
+  ],
+  "file": "vue.vue",
+  "replacements": [
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 59,
+        "start": 53
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "{ active: isActive, 'text-danger': hasError }",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 152,
+        "start": 98
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 205,
+        "start": 199
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "[activeClass, errorClass]",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 277,
+        "start": 243
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "{ 'is-loading': loading }",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 407,
+        "start": 373
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "computedClasses",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 502,
+        "start": 478
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "isActive ? 'bg-blue' : 'bg-gray'",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 615,
+        "start": 574
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 675,
+        "start": 663
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "{ 'p-4': true }",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 733,
+        "start": 703
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 753,
+        "start": 741
+      },
+      "suggestion": "Manually migrate dynamic bindings to Tailwind."
+    }
+  ],
+  "unconverted_count": 10
+}

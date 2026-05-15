@@ -69,6 +69,7 @@ struct JsxPlanVisitor<'i, 'a> {
     resolver: &'a StyleResolver<'i, 'a>,
     rem_scale: f32,
     migrate_only_existing_classes: bool,
+    source: &'a SourceFile,
 }
 
 impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
@@ -159,13 +160,66 @@ impl<'a, 'i> Visit<'a> for JsxPlanVisitor<'i, 'a> {
                 }
             }
         }
-
         // Continue visiting children
         oxc_ast_visit::walk::walk_jsx_opening_element(self, elem);
     }
+
+    fn visit_variable_declarator(&mut self, decl: &VariableDeclarator<'a>) {
+        if let BindingPattern::BindingIdentifier(ident) = &decl.id {
+            let name = ident.name.as_str().to_lowercase();
+            if name.contains("class") || name.contains("style") {
+                if let Some(init) = &decl.init {
+                    self.detect_expression_patterns(init, &name);
+                }
+            }
+        }
+        oxc_ast_visit::walk::walk_variable_declarator(self, decl);
+    }
+
+    // fn visit_assignment_expression(&mut self, expr: &AssignmentExpression<'a>) {
+    //     ...
+    // }
 }
 
 impl<'a, 'i> JsxPlanVisitor<'i, 'a> {
+    fn detect_expression_patterns(&mut self, expr: &Expression<'a>, name: &str) {
+        match expr {
+            Expression::CallExpression(call) => {
+                self.add_dynamic_replacement(
+                    call.span,
+                    format!(
+                        "Dynamic function call assigned to class-like variable '{}'",
+                        name
+                    ),
+                    crate::report::FailureReason::RuntimeClassGeneration,
+                );
+            }
+            Expression::TemplateLiteral(lit) => {
+                if !lit.expressions.is_empty() {
+                    self.add_dynamic_replacement(
+                        lit.span,
+                        format!(
+                            "Dynamic template literal assigned to class-like variable '{}'",
+                            name
+                        ),
+                        crate::report::FailureReason::DynamicTemplateLiteral,
+                    );
+                }
+            }
+            Expression::ConditionalExpression(cond) => {
+                self.add_dynamic_replacement(
+                    cond.span,
+                    format!(
+                        "Conditional expression assigned to class-like variable '{}'",
+                        name
+                    ),
+                    crate::report::FailureReason::ConditionalClassExpression,
+                );
+            }
+            _ => {}
+        }
+    }
+
     fn detect_dynamic_patterns(&mut self, expr_container: &JSXExpressionContainer<'a>) {
         match &expr_container.expression {
             JSXExpression::CallExpression(call) => {
@@ -259,12 +313,13 @@ impl<'a, 'i> JsxPlanVisitor<'i, 'a> {
         message: String,
         reason: crate::report::FailureReason,
     ) {
+        let (line, column) = self.source.line_col(span.start as usize);
         self.replacements.push(Replacement {
             span: Span {
                 start: span.start as usize,
                 end: span.end as usize,
             },
-            before: "".to_string(), // We don't have a single "before" string for complex exprs
+            before: "".to_string(),
             after: "".to_string(),
             confidence: crate::report::ConfidenceReport {
                 score: 0.0,
@@ -281,6 +336,11 @@ impl<'a, 'i> JsxPlanVisitor<'i, 'a> {
                 manual_action_required: true,
                 reason: format!("{:?}", reason),
                 message,
+                location: Some(crate::report::Location {
+                    file: self.source.path.clone(),
+                    line,
+                    column,
+                }),
             }],
         });
     }
@@ -311,6 +371,7 @@ impl JsxParser {
             resolver: &resolver,
             rem_scale,
             migrate_only_existing_classes,
+            source,
         };
         visitor.visit_program(&ret.program);
 

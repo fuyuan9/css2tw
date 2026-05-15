@@ -24,6 +24,26 @@ pub struct SourceFile {
     pub content: String,
 }
 
+impl SourceFile {
+    /// Converts a byte offset into 1-indexed (line, column).
+    pub fn line_col(&self, offset: usize) -> (usize, usize) {
+        let mut line = 1;
+        let mut col = 1;
+        for (i, c) in self.content.char_indices() {
+            if i >= offset {
+                break;
+            }
+            if c == '\n' {
+                line += 1;
+                col = 1;
+            } else {
+                col += 1;
+            }
+        }
+        (line, col)
+    }
+}
+
 /// Trait for different types of parsers that can extract CSS class usages from a source file.
 pub trait ClassUsageParser {
     /// Extracts all class names and their spans from the given source file.

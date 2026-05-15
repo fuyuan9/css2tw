@@ -1,0 +1,215 @@
+{
+  "diagnostics": [
+    {
+      "location": {
+        "column": 26,
+        "file": "react.tsx",
+        "line": 21
+      },
+      "manual_action_required": true,
+      "message": "Dynamic class library detected: clsx",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 23,
+        "file": "react.tsx",
+        "line": 26
+      },
+      "manual_action_required": true,
+      "message": "Dynamic class library detected: classNames",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 23,
+        "file": "react.tsx",
+        "line": 31
+      },
+      "manual_action_required": true,
+      "message": "Dynamic function call in className",
+      "reason": "RuntimeClassGeneration",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 24,
+        "file": "react.tsx",
+        "line": 36
+      },
+      "manual_action_required": true,
+      "message": "Dynamic template literal detected in className",
+      "reason": "DynamicTemplateLiteral",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 23,
+        "file": "react.tsx",
+        "line": 41
+      },
+      "manual_action_required": true,
+      "message": "Conditional class expression detected (ternary)",
+      "reason": "ConditionalClassExpression",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 21,
+        "file": "react.tsx",
+        "line": 46
+      },
+      "manual_action_required": true,
+      "message": "Logical expression detected in className (&& / ||)",
+      "reason": "ConditionalClassExpression",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 23,
+        "file": "react.tsx",
+        "line": 51
+      },
+      "manual_action_required": true,
+      "message": "Dynamic function call in className",
+      "reason": "RuntimeClassGeneration",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 23,
+        "file": "react.tsx",
+        "line": 56
+      },
+      "manual_action_required": true,
+      "message": "Complex dynamic expression detected in className",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    },
+    {
+      "location": {
+        "column": 23,
+        "file": "react.tsx",
+        "line": 61
+      },
+      "manual_action_required": true,
+      "message": "Variable reference detected in className: dynamicClasses",
+      "reason": "DynamicClass",
+      "recoverable": false,
+      "severity": "warning"
+    }
+  ],
+  "file": "react.tsx",
+  "replacements": [
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 593,
+        "start": 524
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 732,
+        "start": 685
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "RuntimeClassGeneration",
+      "span": {
+        "end": 861,
+        "start": 832
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicTemplateLiteral",
+      "span": {
+        "end": 1011,
+        "start": 952
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "ConditionalClassExpression",
+      "span": {
+        "end": 1138,
+        "start": 1100
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "ConditionalClassExpression",
+      "span": {
+        "end": 1248,
+        "start": 1225
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "RuntimeClassGeneration",
+      "span": {
+        "end": 1363,
+        "start": 1339
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 1495,
+        "start": 1456
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    },
+    {
+      "after": "",
+      "before": "",
+      "confidence": 0.0,
+      "failure_reason": "DynamicClass",
+      "span": {
+        "end": 1598,
+        "start": 1584
+      },
+      "suggestion": "Manually migrate dynamic classes to Tailwind utilities."
+    }
+  ],
+  "unconverted_count": 9
+}
