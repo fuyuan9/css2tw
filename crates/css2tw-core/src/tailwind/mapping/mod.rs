@@ -677,13 +677,13 @@ mod tests {
 
         let none_prop = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(none_prop, false, &[variant.clone()], 4.0, &vars),
+            map_property(none_prop, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("hidden".to_string())
         );
 
         let flex_prop = &rules[1].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(flex_prop, false, &[variant.clone()], 4.0, &vars),
+            map_property(flex_prop, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("flex".to_string())
         );
     }
@@ -701,13 +701,13 @@ mod tests {
 
         let pt = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(pt, false, &[variant.clone()], 4.0, &vars),
+            map_property(pt, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("pt-4".to_string())
         );
 
         let mb = &rules[0].rule.declarations.declarations[1];
         assert_eq!(
-            map_property(mb, false, &[variant.clone()], 4.0, &vars),
+            map_property(mb, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("mb-4".to_string())
         );
     }
@@ -726,7 +726,7 @@ mod tests {
         let mr = &rules[0].rule.declarations.declarations[0];
         // -15px at 16px/rem and rem-scale 4.0: (-15 / 16) * 4 = -3.75
         assert_eq!(
-            map_property(mr, false, &[variant.clone()], 4.0, &vars),
+            map_property(mr, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("-mr-3.75".to_string())
         );
     }
@@ -743,7 +743,7 @@ mod tests {
         let vars = HashMap::new();
 
         let bg = &rules[0].rule.declarations.declarations[0];
-        let out = map_property(bg, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out = map_property(bg, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         // Should have underscores instead of spaces and NO double quotes
         assert_eq!(out, "bg-[url(../img.svg)]");
     }
@@ -760,11 +760,11 @@ mod tests {
         let vars = HashMap::new();
 
         let color = &rules[0].rule.declarations.declarations[0];
-        let out = map_property(color, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out = map_property(color, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         assert!(out.contains("#f00") || out.contains("red"));
 
         let bg = &rules[0].rule.declarations.declarations[1];
-        let out = map_property(bg, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out = map_property(bg, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         assert!(out.contains("bg-") && (out.contains("#f00") || out.contains("red")));
     }
 
@@ -780,7 +780,7 @@ mod tests {
         let vars = HashMap::new();
         let pt = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(pt, false, &[variant.clone()], 4.0, &vars),
+            map_property(pt, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("hover:pt-4".to_string())
         );
     }
@@ -798,15 +798,15 @@ mod tests {
         let pt = &rules[0].rule.declarations.declarations[0];
 
         assert_eq!(
-            map_property(pt, false, &[variant.clone()], 4.0, &vars),
+            map_property(pt, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("pt-4".to_string())
         );
         assert_eq!(
-            map_property(pt, false, &[variant.clone()], 1.0, &vars),
+            map_property(pt, false, std::slice::from_ref(&variant), 1.0, &vars),
             Some("pt-1".to_string())
         );
         assert_eq!(
-            map_property(pt, false, &[variant.clone()], 5.0, &vars),
+            map_property(pt, false, std::slice::from_ref(&variant), 5.0, &vars),
             Some("pt-5".to_string())
         );
     }
@@ -826,12 +826,13 @@ mod tests {
         // But here we check map_property directly
         let none_prop = &rules[0].rule.declarations.important_declarations[0];
         assert_eq!(
-            map_property(none_prop, true, &[variant.clone()], 4.0, &vars),
+            map_property(none_prop, true, std::slice::from_ref(&variant), 4.0, &vars),
             Some("hidden!".to_string())
         );
 
         let color_prop = &rules[0].rule.declarations.important_declarations[1];
-        let out = map_property(color_prop, true, &[variant.clone()], 4.0, &vars).unwrap();
+        let out =
+            map_property(color_prop, true, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         assert!(out.ends_with("!"));
         assert!(out.contains("text-"));
     }
@@ -848,7 +849,8 @@ mod tests {
         let vars = HashMap::new();
 
         let transform = &rules[0].rule.declarations.declarations[0];
-        let out_tr = map_property(transform, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out_tr =
+            map_property(transform, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         // Should NOT contain spaces
         assert!(
             !out_tr.contains(' '),
@@ -858,7 +860,8 @@ mod tests {
         assert!(out_tr.contains('_') || !out_tr.contains("translate(10px, 20px)"));
 
         let border = &rules[0].rule.declarations.declarations[1];
-        let out_bd = map_property(border, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out_bd =
+            map_property(border, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         assert!(!out_bd.contains(' '), "Border contains spaces: {}", out_bd);
         assert_eq!(out_bd, "border-[1px_solid_red]");
     }
@@ -877,21 +880,21 @@ mod tests {
         // opacity: .5 -> opacity-[0.5]
         let opacity = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(opacity, false, &[variant.clone()], 4.0, &vars),
+            map_property(opacity, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("opacity-[0.5]".to_string())
         );
 
         // margin: .5rem -> m-[0.5rem]
         let margin = &rules[0].rule.declarations.declarations[1];
         assert_eq!(
-            map_property(margin, false, &[variant.clone()], 4.0, &vars),
+            map_property(margin, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("m-[0.5rem]".to_string())
         );
 
         // padding: .25% -> p-[0.25%]
         let padding = &rules[0].rule.declarations.declarations[2];
         assert_eq!(
-            map_property(padding, false, &[variant.clone()], 4.0, &vars),
+            map_property(padding, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("p-[0.25%]".to_string())
         );
 
@@ -905,13 +908,25 @@ mod tests {
 
         let margin_neg = &rules_neg[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(margin_neg, false, &[variant.clone()], 4.0, &vars),
+            map_property(
+                margin_neg,
+                false,
+                std::slice::from_ref(&variant),
+                4.0,
+                &vars
+            ),
             Some("m-[-0.5rem]".to_string())
         );
 
         let opacity_neg = &rules_neg[0].rule.declarations.declarations[1];
         assert_eq!(
-            map_property(opacity_neg, false, &[variant.clone()], 4.0, &vars),
+            map_property(
+                opacity_neg,
+                false,
+                std::slice::from_ref(&variant),
+                4.0,
+                &vars
+            ),
             Some("opacity-[-0.1]".to_string())
         );
     }
@@ -930,35 +945,35 @@ mod tests {
         // 14px -> text-sm
         let fs14 = &rules[0].rule.declarations.declarations[0];
         assert_eq!(
-            map_property(fs14, false, &[variant.clone()], 4.0, &vars),
+            map_property(fs14, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("text-sm".to_string())
         );
 
         // 16px -> text-base
         let fs16 = &rules[0].rule.declarations.declarations[1];
         assert_eq!(
-            map_property(fs16, false, &[variant.clone()], 4.0, &vars),
+            map_property(fs16, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("text-base".to_string())
         );
 
         // 12px -> text-xs
         let fs12 = &rules[0].rule.declarations.declarations[2];
         assert_eq!(
-            map_property(fs12, false, &[variant.clone()], 4.0, &vars),
+            map_property(fs12, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("text-xs".to_string())
         );
 
         // 15px -> text-[15px]
         let fs15 = &rules[0].rule.declarations.declarations[3];
         assert_eq!(
-            map_property(fs15, false, &[variant.clone()], 4.0, &vars),
+            map_property(fs15, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("text-[15px]".to_string())
         );
 
         // 1rem -> text-base
         let fs1rem = &rules[0].rule.declarations.declarations[4];
         assert_eq!(
-            map_property(fs1rem, false, &[variant.clone()], 4.0, &vars),
+            map_property(fs1rem, false, std::slice::from_ref(&variant), 4.0, &vars),
             Some("text-base".to_string())
         );
     }
@@ -975,17 +990,17 @@ mod tests {
         let vars = HashMap::new();
 
         let tr = &rules[0].rule.declarations.declarations[0];
-        let out_tr = map_property(tr, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out_tr = map_property(tr, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         println!("out_tr: {}", out_tr);
         assert!(out_tr.contains("transition-[opacity_0.3s_ease-in-out]"));
 
         let tp = &rules[0].rule.declarations.declarations[1];
-        let out_tp = map_property(tp, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out_tp = map_property(tp, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         println!("out_tp: {}", out_tp);
         assert_eq!(out_tp, "transition-transform".to_string());
 
         let td = &rules[0].rule.declarations.declarations[2];
-        let out_td = map_property(td, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out_td = map_property(td, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         println!("out_td: {}", out_td);
         assert_eq!(out_td, "duration-[0.2s]".to_string());
     }
@@ -1003,7 +1018,8 @@ mod tests {
         let vars = HashMap::new();
 
         let anim = &rules[0].rule.declarations.declarations[0];
-        let out_anim = map_property(anim, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out_anim =
+            map_property(anim, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         println!("out_anim: {}", out_anim);
         // lightningcss might reorder: animate-[1s_infinite_spin]
         assert!(
@@ -1011,12 +1027,12 @@ mod tests {
         );
 
         let an = &rules[0].rule.declarations.declarations[1];
-        let out_an = map_property(an, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out_an = map_property(an, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         println!("out_an: {}", out_an);
         assert_eq!(out_an, "animate-pulse".to_string());
 
         let ad = &rules[0].rule.declarations.declarations[2];
-        let out_ad = map_property(ad, false, &[variant.clone()], 4.0, &vars).unwrap();
+        let out_ad = map_property(ad, false, std::slice::from_ref(&variant), 4.0, &vars).unwrap();
         println!("out_ad: {}", out_ad);
         assert_eq!(out_ad, "[animation-duration:2s]".to_string());
     }

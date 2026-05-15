@@ -155,7 +155,10 @@ fn project_root() -> PathBuf {
 /// Runs a conversion benchmark against Bootstrap CSS.
 fn bench_bootstrap() -> Result<(), DynError> {
     let root = project_root();
-    let bootstrap_path = root.join("fixtures").join("benchmarks").join("bootstrap.css");
+    let bootstrap_path = root
+        .join("fixtures")
+        .join("benchmarks")
+        .join("bootstrap.css");
 
     if !bootstrap_path.exists() {
         return Err(format!(
@@ -181,21 +184,38 @@ fn bench_bootstrap() -> Result<(), DynError> {
 
     println!("Analyzing {} unique classes...\n", total_classes);
 
+    let mut failure_reasons = std::collections::HashMap::new();
+    let mut failed_examples = Vec::new();
+
     for class_name in rule_map.keys() {
         let replacement = ConversionPlanner::explain(class_name, &rule_map, &variable_map, 4.0);
 
         match replacement {
             Some(rep) => {
-                if !rep.after.is_empty() && rep.failure_reason.is_none() && rep.confidence.score >= 1.0 {
+                if !rep.after.is_empty()
+                    && rep.failure_reason.is_none()
+                    && rep.confidence.score >= 1.0
+                {
                     safe_conversions += 1;
                 } else if !rep.after.is_empty() {
                     partial_conversions += 1;
                 } else {
                     failed_conversions += 1;
+                    let reason = rep
+                        .failure_reason
+                        .map(|r| r.to_string())
+                        .unwrap_or_else(|| "Unknown".to_string());
+                    *failure_reasons.entry(reason).or_insert(0) += 1;
+                    if failed_examples.len() < 20 {
+                        failed_examples.push(format!("{:<20} ({})", class_name, rep.after));
+                    }
                 }
             }
             None => {
                 failed_conversions += 1;
+                *failure_reasons
+                    .entry("NoMappingFound".to_string())
+                    .or_insert(0) += 1;
             }
         }
     }
@@ -204,9 +224,44 @@ fn bench_bootstrap() -> Result<(), DynError> {
     let partial_pct = (partial_conversions as f64 / total_classes as f64) * 100.0;
     let failed_pct = (failed_conversions as f64 / total_classes as f64) * 100.0;
 
-    println!("{:<20} : {:>5} ({:>6.2}%)", "Safe Conversions".green(), safe_conversions, safe_pct);
-    println!("{:<20} : {:>5} ({:>6.2}%)", "Partial".yellow(), partial_conversions, partial_pct);
-    println!("{:<20} : {:>5} ({:>6.2}%)", "Failed".red(), failed_conversions, failed_pct);
+    println!(
+        "{:<20} : {:>5} ({:>6.2}%)",
+        "Safe Conversions".green(),
+        safe_conversions,
+        safe_pct
+    );
+    println!(
+        "{:<20} : {:>5} ({:>6.2}%)",
+        "Partial".yellow(),
+        partial_conversions,
+        partial_pct
+    );
+    println!(
+        "{:<20} : {:>5} ({:>6.2}%)",
+        "Failed".red(),
+        failed_conversions,
+        failed_pct
+    );
+
+    if !failure_reasons.is_empty() {
+        println!("\n{}", "--- Failure Reasons ---".bold());
+        let mut sorted_reasons: Vec<_> = failure_reasons.into_iter().collect();
+        sorted_reasons.sort_by_key(|b| std::cmp::Reverse(b.1));
+        for (reason, count) in sorted_reasons {
+            println!("{:<20} : {:>5}", reason, count);
+        }
+    }
+
+    if !failed_examples.is_empty() {
+        println!(
+            "\n{}",
+            "--- Failed Examples (Class Name (Current Output)) ---".bold()
+        );
+        for example in failed_examples {
+            println!("{}", example);
+        }
+    }
+
     println!("{:-<40}", "");
     println!("{:<20} : {:>5}", "Total Classes".bold(), total_classes);
 

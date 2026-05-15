@@ -25,7 +25,7 @@ fn test_cli_stdin_support() {
     // Debug print
     if !json["changes"][0]["patched_content"]
         .as_str()
-        .map_or(false, |p| p.contains("p-2.5"))
+        .is_some_and(|p| p.contains("p-2.5"))
     {
         println!(
             "JSON Output: {}",
