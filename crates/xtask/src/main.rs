@@ -34,6 +34,8 @@ fn try_main() -> Result<(), DynError> {
         Some("bench-bulma-v1") => bench_bulma_v1()?,
         Some("bench-foundation") => bench_foundation()?,
         Some("bench-skeleton") => bench_skeleton()?,
+        Some("bench-uikit") => bench_uikit()?,
+        Some("bench-semantic") => bench_semantic()?,
         Some("bench-all") => bench_all()?,
         _ => print_help(),
     }
@@ -53,6 +55,8 @@ bench-bulma-v0      Runs benchmark against Bulma v0.9
 bench-bulma-v1      Runs benchmark against Bulma v1.0
 bench-foundation    Runs benchmark against Foundation v6
 bench-skeleton      Runs benchmark against Skeleton v2
+bench-uikit         Runs benchmark against UIkit v3
+bench-semantic      Runs benchmark against Semantic UI (Fomantic)
 bench-all           Runs all benchmarks and shows a summary
 "
     )
@@ -176,6 +180,8 @@ fn bench_all() -> Result<(), DynError> {
     bench_bulma_v1()?;
     bench_foundation()?;
     bench_skeleton()?;
+    bench_uikit()?;
+    bench_semantic()?;
     println!(
         "{}",
         "\nAll benchmarks completed successfully!".bold().green()
@@ -238,6 +244,18 @@ fn bench_skeleton() -> Result<(), DynError> {
         .join("benchmarks")
         .join("skeleton.css");
     run_benchmark("Skeleton v2", &path)
+}
+
+fn bench_uikit() -> Result<(), DynError> {
+    let root = project_root();
+    let path = root.join("fixtures").join("benchmarks").join("uikit.css");
+    run_benchmark("UIkit v3", &path)
+}
+
+fn bench_semantic() -> Result<(), DynError> {
+    let root = project_root();
+    let path = root.join("fixtures").join("benchmarks").join("semantic.css");
+    run_benchmark("Semantic UI", &path)
 }
 
 /// Generic benchmark runner.
