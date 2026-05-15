@@ -467,23 +467,22 @@ export default defineConfig({{
                     url
                 );
 
-                let test_content = format!(
-                    r#"import {{ test, expect }} from '@playwright/test';
+                let test_content = r#"import { test, expect } from '@playwright/test';
 
-test('Visual Regression Comparison', async ({{ page }}) => {{
+test('Visual Regression Comparison', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 
   // Baseline snapshot
   // Run with `npx playwright test -c playwright.vrt.config.ts --update-snapshots` first
   // Then run migration, and run `npx playwright test -c playwright.vrt.config.ts` again to compare
-  await expect(page).toHaveScreenshot('site-baseline.png', {{
+  await expect(page).toHaveScreenshot('site-baseline.png', {
     fullPage: true,
     maxDiffPixelRatio: 0.01,
-  }});
-}});
+  });
+});
 "#
-                );
+                .to_string();
 
                 std::fs::write("playwright.vrt.config.ts", config_content)?;
                 std::fs::write("tests-vrt/migrate-vrt.spec.ts", test_content)?;
