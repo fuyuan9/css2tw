@@ -316,6 +316,12 @@ pub fn map_property(
         Property::MarginBottom(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("mb", &s)),
         Property::MarginLeft(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("ml", &s)),
         Property::MarginRight(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("mr", &s)),
+        Property::MarginInlineStart(v) => {
+            length_to_tw(v, rem_scale).map(|s| format_spacing("ms", &s))
+        }
+        Property::MarginInlineEnd(v) => {
+            length_to_tw(v, rem_scale).map(|s| format_spacing("me", &s))
+        }
         Property::Margin(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -331,6 +337,12 @@ pub fn map_property(
         Property::PaddingBottom(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("pb", &s)),
         Property::PaddingLeft(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("pl", &s)),
         Property::PaddingRight(v) => length_to_tw(v, rem_scale).map(|s| format_spacing("pr", &s)),
+        Property::PaddingInlineStart(v) => {
+            length_to_tw(v, rem_scale).map(|s| format_spacing("ps", &s))
+        }
+        Property::PaddingInlineEnd(v) => {
+            length_to_tw(v, rem_scale).map(|s| format_spacing("pe", &s))
+        }
         Property::Padding(v) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
@@ -346,14 +358,63 @@ pub fn map_property(
         Property::Height(v) => length_to_tw(v, rem_scale).map(|s| format!("h-{}", s)),
         Property::MinWidth(v) => length_to_tw(v, rem_scale).map(|s| format!("min-w-{}", s)),
         Property::MinHeight(v) => length_to_tw(v, rem_scale).map(|s| format!("min-h-{}", s)),
+        Property::MaxWidth(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() && dest == "none" {
+                Some("max-w-none".to_string())
+            } else {
+                length_to_tw(v, rem_scale).map(|s| format!("max-w-{}", s))
+            }
+        }
+        Property::MaxHeight(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() && dest == "none" {
+                Some("max-h-none".to_string())
+            } else {
+                length_to_tw(v, rem_scale).map(|s| format!("max-h-{}", s))
+            }
+        }
 
         // Typography
         Property::FontSize(v) => map_font_size(v, rem_scale).map(|s| format!("text-{}", s)),
+        Property::WordBreak(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "normal" => Some("break-normal".to_string()),
+                    "break-all" => Some("break-all".to_string()),
+                    "keep-all" => Some("break-keep".to_string()),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        Property::OverflowWrap(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "anywhere" | "break-word" => Some("break-words".to_string()),
+                    "normal" => Some("break-normal".to_string()),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
         Property::Color(c) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                Some(format!("text-[{}]", escape_arbitrary_value(&dest)))
+                if dest == "inherit" {
+                    Some("text-inherit".to_string())
+                } else {
+                    Some(format!("text-[{}]", escape_arbitrary_value(&dest)))
+                }
             } else {
                 None
             }
@@ -362,7 +423,11 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                Some(format!("bg-[{}]", escape_arbitrary_value(&dest)))
+                if dest == "inherit" {
+                    Some("bg-inherit".to_string())
+                } else {
+                    Some(format!("bg-[{}]", escape_arbitrary_value(&dest)))
+                }
             } else {
                 None
             }
@@ -401,12 +466,74 @@ pub fn map_property(
                 None
             }
         }
+        Property::BorderTopLeftRadius(v, _) => {
+            length_to_tw(v, rem_scale).map(|s| format!("rounded-tl-{}", s))
+        }
+        Property::BorderTopRightRadius(v, _) => {
+            length_to_tw(v, rem_scale).map(|s| format!("rounded-tr-{}", s))
+        }
+        Property::BorderBottomLeftRadius(v, _) => {
+            length_to_tw(v, rem_scale).map(|s| format!("rounded-bl-{}", s))
+        }
+        Property::BorderBottomRightRadius(v, _) => {
+            length_to_tw(v, rem_scale).map(|s| format!("rounded-br-{}", s))
+        }
+        Property::BorderStartStartRadius(v) => {
+            length_to_tw(v, rem_scale).map(|s| format!("rounded-ss-{}", s))
+        }
+        Property::BorderStartEndRadius(v) => {
+            length_to_tw(v, rem_scale).map(|s| format!("rounded-se-{}", s))
+        }
+        Property::BorderEndStartRadius(v) => {
+            length_to_tw(v, rem_scale).map(|s| format!("rounded-es-{}", s))
+        }
+        Property::BorderEndEndRadius(v) => {
+            length_to_tw(v, rem_scale).map(|s| format!("rounded-ee-{}", s))
+        }
         Property::BorderWidth(v) => length_to_tw(v, rem_scale).map(|s| format!("border-{}", s)),
+        Property::BorderTopWidth(v) => {
+            length_to_tw(v, rem_scale).map(|s| format!("border-t-{}", s))
+        }
+        Property::BorderBottomWidth(v) => {
+            length_to_tw(v, rem_scale).map(|s| format!("border-b-{}", s))
+        }
+        Property::BorderLeftWidth(v) => {
+            length_to_tw(v, rem_scale).map(|s| format!("border-l-{}", s))
+        }
+        Property::BorderRightWidth(v) => {
+            length_to_tw(v, rem_scale).map(|s| format!("border-r-{}", s))
+        }
+        Property::BorderStyle(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                Some(format!("border-{}", dest))
+            } else {
+                None
+            }
+        }
         Property::BorderColor(c) => {
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if c.to_css(&mut printer).is_ok() {
-                Some(format!("border-[{}]", escape_arbitrary_value(&dest)))
+                if dest == "inherit" {
+                    Some("border-inherit".to_string())
+                } else {
+                    Some(format!("border-[{}]", escape_arbitrary_value(&dest)))
+                }
+            } else {
+                None
+            }
+        }
+        Property::Outline(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                if dest == "0" || dest == "none" {
+                    Some("outline-none".to_string())
+                } else {
+                    Some(format!("outline-[{}]", escape_arbitrary_value(&dest)))
+                }
             } else {
                 None
             }
@@ -748,11 +875,71 @@ pub fn map_property(
                 None
             }
         }
+        Property::Appearance(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                if dest == "none" {
+                    Some("appearance-none".to_string())
+                } else {
+                    Some(format!("appearance-[{}]", escape_arbitrary_value(&dest)))
+                }
+            } else {
+                None
+            }
+        }
+        Property::Resize(v) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "none" => Some("resize-none".to_string()),
+                    "both" => Some("resize".to_string()),
+                    "horizontal" => Some("resize-x".to_string()),
+                    "vertical" => Some("resize-y".to_string()),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        Property::TransformOrigin(v, _) => {
+            let mut dest = String::new();
+            let mut printer = Printer::new(&mut dest, PrinterOptions::default());
+            if v.to_css(&mut printer).is_ok() {
+                match dest.as_str() {
+                    "center" => Some("origin-center".to_string()),
+                    "top" => Some("origin-top".to_string()),
+                    "top right" => Some("origin-top-right".to_string()),
+                    "right" => Some("origin-right".to_string()),
+                    "bottom right" => Some("origin-bottom-right".to_string()),
+                    "bottom" => Some("origin-bottom".to_string()),
+                    "bottom left" => Some("origin-bottom-left".to_string()),
+                    "left" => Some("origin-left".to_string()),
+                    "top left" => Some("origin-top-left".to_string()),
+                    _ => Some(format!("origin-[{}]", escape_arbitrary_value(&dest))),
+                }
+            } else {
+                None
+            }
+        }
         _ => {
             let (prop_name, prop_val) = prop_str
                 .split_once(':')
                 .map(|(n, v)| (n.trim(), v.trim().trim_end_matches(';')))
                 .unwrap_or(("", ""));
+
+            if prop_val == "inherit" {
+                match prop_name {
+                    "color" => return Some("text-inherit".to_string()),
+                    "background-color" => return Some("bg-inherit".to_string()),
+                    "border-color" => return Some("border-inherit".to_string()),
+                    "font-size" => return Some("text-inherit".to_string()),
+                    "line-height" => return Some("leading-inherit".to_string()),
+                    "font-family" => return Some("font-inherit".to_string()),
+                    _ => {}
+                }
+            }
 
             match prop_name {
                 "display" => match prop_val {
@@ -951,6 +1138,16 @@ pub fn map_property(
                     _ => Some(format!("shadow-[{}]", escape_arbitrary_value(prop_val))),
                 },
                 "transform" => Some(format!("transform-[{}]", escape_arbitrary_value(prop_val))),
+                "break-inside" | "page-break-inside" => match prop_val {
+                    "auto" => Some("break-inside-auto".to_string()),
+                    "avoid" => Some("break-inside-avoid".to_string()),
+                    "avoid-page" => Some("break-inside-avoid-page".to_string()),
+                    "avoid-column" => Some("break-inside-avoid-column".to_string()),
+                    _ => Some(format!(
+                        "break-inside-[{}]",
+                        escape_arbitrary_value(prop_val)
+                    )),
+                },
                 _ => None,
             }
         }

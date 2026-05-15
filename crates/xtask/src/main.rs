@@ -272,7 +272,6 @@ fn run_benchmark(name: &str, css_path: &Path) -> Result<(), DynError> {
 
     for class_name in rule_map.keys() {
         let replacement = ConversionPlanner::explain(class_name, &rule_map, &variable_map, 4.0);
-
         match replacement {
             Some(rep) => {
                 if !rep.after.is_empty()
@@ -280,8 +279,19 @@ fn run_benchmark(name: &str, css_path: &Path) -> Result<(), DynError> {
                     && rep.confidence.score >= 1.0
                 {
                     safe_conversions += 1;
-                } else if !rep.after.is_empty() {
+                } else if rep.confidence.score > 0.0 {
                     partial_conversions += 1;
+                    // Track unmapped properties for reporting
+                    for t in &rep.trace {
+                        if t.starts_with("Unmapped properties: ") {
+                            let props = t.strip_prefix("Unmapped properties: ").unwrap();
+                            for prop in props.split(", ") {
+                                *failure_reasons
+                                    .entry(format!("Partial Prop: {}", prop))
+                                    .or_insert(0) += 1;
+                            }
+                        }
+                    }
                 } else {
                     failed_conversions += 1;
                     let reason = rep
@@ -289,6 +299,19 @@ fn run_benchmark(name: &str, css_path: &Path) -> Result<(), DynError> {
                         .map(|r| r.to_string())
                         .unwrap_or_else(|| "Unknown".to_string());
                     *failure_reasons.entry(reason).or_insert(0) += 1;
+
+                    // Track unmapped properties for reporting
+                    for t in &rep.trace {
+                        if t.starts_with("Unmapped properties: ") {
+                            let props = t.strip_prefix("Unmapped properties: ").unwrap();
+                            for prop in props.split(", ") {
+                                *failure_reasons
+                                    .entry(format!("Failed Prop: {}", prop))
+                                    .or_insert(0) += 1;
+                            }
+                        }
+                    }
+
                     if failed_examples.len() < 5 {
                         failed_examples.push(format!("{:<20} ({})", class_name, rep.after));
                     }
@@ -326,13 +349,13 @@ fn run_benchmark(name: &str, css_path: &Path) -> Result<(), DynError> {
         failed_pct
     );
 
-    if !failure_reasons.is_empty() && failed_conversions > 0 {
+    if !failure_reasons.is_empty() && (failed_conversions > 0 || partial_conversions > 0) {
         print!("  Reasons: ");
         let mut sorted_reasons: Vec<_> = failure_reasons.into_iter().collect();
         sorted_reasons.sort_by_key(|b| std::cmp::Reverse(b.1));
         let reason_strings: Vec<_> = sorted_reasons
             .into_iter()
-            .take(3)
+            .take(20)
             .map(|(r, c)| format!("{} ({})", r, c))
             .collect();
         println!("{}", reason_strings.join(", "));
