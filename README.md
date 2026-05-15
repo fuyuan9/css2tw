@@ -243,6 +243,16 @@ cargo xtask bench-skeleton      # Skeleton 2.0
 | **Foundation** | v6.9 | **100.00%** | 299 | Perfect conversion |
 | **Skeleton** | v2.0 | **100.00%** | 37 | Perfect conversion |
 
+## Understanding "Partial" Results
+
+With the latest version of `css2tw`, most standard CSS properties and variables are now converted with 100% confidence (**Safe**). However, you might still see "Partial" results in certain complex scenarios:
+
+1. **Ambiguous Selectors**: When a single class name is defined across multiple CSS rules or files with conflicting or additive properties. The tool merges these, but marks them for review to ensure the cascade order is preserved correctly.
+2. **Malformed or Unparseable CSS**: If a property value is syntactically invalid or uses proprietary non-standard syntax that the underlying parser cannot interpret, that specific property might be omitted while others are converted.
+3. **Complex Cascade Review**: Cases where the tool successfully generates Tailwind output but detects high-risk CSS patterns that might behave differently at runtime depending on the final utility order.
+
+In essence, a "Partial" result is no longer a sign of tool limitation, but a **proactive alert** suggesting manual verification of your CSS architecture.
+
 ### Local Execution
 ```bash
 cargo run --bin css2tw -- <command> [args]
