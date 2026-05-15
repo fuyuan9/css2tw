@@ -9,12 +9,18 @@ pub struct Confidence {
     pub reasons: Vec<Reason>,
 }
 
-impl Confidence {
-    pub fn new() -> Self {
+impl Default for Confidence {
+    fn default() -> Self {
         Self {
             score: 0.0,
             reasons: Vec::new(),
         }
+    }
+}
+
+impl Confidence {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn apply_modifier(&mut self, score_change: f32, reason: Reason) {

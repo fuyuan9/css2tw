@@ -125,10 +125,9 @@ impl<'i> ResolvedElementStyle<'i> {
                 .property
                 .to_css(&mut printer, mapping.important)
                 .is_ok()
+                && !dest.is_empty()
             {
-                if !dest.is_empty() {
-                    parts.push(dest);
-                }
+                parts.push(dest);
             }
         }
         if parts.is_empty() {

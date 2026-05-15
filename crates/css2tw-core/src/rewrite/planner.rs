@@ -100,12 +100,9 @@ impl ConversionPlanner {
                 &mut dest,
                 lightningcss::printer::PrinterOptions::default(),
             );
-            if mapping.property.to_css(&mut printer, false).is_ok() {
-                if dest.contains("var(") {
-                    confidence_reasons
-                        .push(crate::report::ConfidenceReason::VariableResolved(dest));
-                    score *= 0.9;
-                }
+            if mapping.property.to_css(&mut printer, false).is_ok() && dest.contains("var(") {
+                confidence_reasons.push(crate::report::ConfidenceReason::VariableResolved(dest));
+                score *= 0.9;
             }
         }
 

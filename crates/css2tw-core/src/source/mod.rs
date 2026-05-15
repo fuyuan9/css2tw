@@ -46,7 +46,7 @@ impl Scanner {
 
         let files: Vec<PathBuf> = walker
             .filter_map(Result::ok)
-            .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
+            .filter(|entry| entry.file_type().is_some_and(|ft| ft.is_file()))
             .map(|entry| entry.into_path())
             .collect();
 

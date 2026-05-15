@@ -47,7 +47,7 @@ fn dist() -> Result<(), DynError> {
     println!("Building release binary...");
     let status = Command::new("cargo")
         .current_dir(&root)
-        .args(&["build", "--release"])
+        .args(["build", "--release"])
         .status()?;
 
     if !status.success() {

@@ -100,11 +100,7 @@ impl HtmlParser {
 
                 if let Some(offset) = found_pos {
                     let start_in_source = current_search_pos + offset;
-                    let val_start = if source.content[start_in_source..].starts_with("class=\"") {
-                        start_in_source + 7
-                    } else {
-                        start_in_source + 7 // length of 'class='
-                    };
+                    let val_start = start_in_source + 7;
                     let val_end = val_start + class_string.len();
 
                     current_search_pos = val_end;
@@ -132,7 +128,7 @@ impl HtmlParser {
                     let is_valid_tag = source.content[tag_end..]
                         .chars()
                         .next()
-                        .map_or(false, |c| c.is_whitespace() || c == '>' || c == '/');
+                        .is_some_and(|c| c.is_whitespace() || c == '>' || c == '/');
 
                     if is_valid_tag {
                         let insert_pos = tag_end;

@@ -117,7 +117,7 @@ fn map_media_query(query: &str) -> TailwindVariant {
     // 2. Handle complex/combined queries
     if trimmed.contains(" and ") || trimmed.contains(',') {
         // Replace spaces with underscores for Tailwind arbitrary variants
-        let safe_query = query.replace(' ', "_").replace('(', "(").replace(')', ")");
+        let safe_query = query.replace(' ', "_");
         return TailwindVariant::Arbitrary(format!("[@media_{}]", safe_query));
     }
 

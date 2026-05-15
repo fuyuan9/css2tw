@@ -149,16 +149,18 @@ fn main() -> anyhow::Result<()> {
             include_tag_selectors,
         } => {
             process_migration(
-                path,
-                "read_only",
-                0.8, // default threshold
-                4.0, // default rem_scale
-                &[],
-                None,
-                *summary_only,
-                css_file,
-                css_inline.as_ref(),
-                *include_tag_selectors,
+                MigrationOptions {
+                    path,
+                    mode: "read_only",
+                    confidence_threshold: 0.8,
+                    rem_scale: 4.0,
+                    custom_theme: &[],
+                    config_json: None,
+                    summary_only: *summary_only,
+                    extra_css_files: css_file,
+                    inline_css: css_inline.as_ref(),
+                    include_tag_selectors: *include_tag_selectors,
+                },
                 &cli,
             )?;
         }
@@ -181,16 +183,18 @@ fn main() -> anyhow::Result<()> {
                 "dry_run"
             };
             process_migration(
-                path,
-                mode,
-                *confidence_threshold,
-                *rem_scale,
-                custom_theme,
-                config_json.as_ref(),
-                *summary_only,
-                css_file,
-                css_inline.as_ref(),
-                *include_tag_selectors,
+                MigrationOptions {
+                    path,
+                    mode,
+                    confidence_threshold: *confidence_threshold,
+                    rem_scale: *rem_scale,
+                    custom_theme,
+                    config_json: config_json.as_ref(),
+                    summary_only: *summary_only,
+                    extra_css_files: css_file,
+                    inline_css: css_inline.as_ref(),
+                    include_tag_selectors: *include_tag_selectors,
+                },
                 &cli,
             )?;
         }
@@ -280,6 +284,20 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Options for the migration process.
+struct MigrationOptions<'a> {
+    path: &'a str,
+    mode: &'a str,
+    confidence_threshold: f64,
+    rem_scale: f32,
+    custom_theme: &'a [String],
+    config_json: Option<&'a String>,
+    summary_only: bool,
+    extra_css_files: &'a [String],
+    inline_css: Option<&'a String>,
+    include_tag_selectors: bool,
+}
+
 /// Orchestrates the entire migration process for a given path.
 ///
 /// This involves:
@@ -288,26 +306,14 @@ fn main() -> anyhow::Result<()> {
 /// 3. Reading CSS contents.
 /// 4. Iterating through source files, planning replacements, and optionally writing changes.
 /// 5. Generating and printing a comprehensive report.
-fn process_migration(
-    path: &str,
-    mode: &str,
-    confidence_threshold: f64,
-    rem_scale: f32,
-    custom_theme: &[String],
-    config_json: Option<&String>,
-    summary_only: bool,
-    extra_css_files: &[String],
-    inline_css: Option<&String>,
-    include_tag_selectors: bool,
-    cli: &Cli,
-) -> anyhow::Result<()> {
-    let mut resolved_config = if let Some(json) = config_json {
+fn process_migration(opts: MigrationOptions, cli: &Cli) -> anyhow::Result<()> {
+    let mut resolved_config = if let Some(json) = opts.config_json {
         serde_json::from_str(json)?
     } else {
         let mut cfg = css2tw_core::Config::default();
-        cfg.tailwind.rem_scale = rem_scale;
-        cfg.confidence_threshold = confidence_threshold as f32;
-        for pair in custom_theme {
+        cfg.tailwind.rem_scale = opts.rem_scale;
+        cfg.confidence_threshold = opts.confidence_threshold as f32;
+        for pair in opts.custom_theme {
             if let Some((k, v)) = pair.split_once('=') {
                 cfg.tailwind
                     .custom_theme
@@ -317,7 +323,7 @@ fn process_migration(
         cfg
     };
 
-    resolved_config.rewrite.include_tag_selectors = include_tag_selectors;
+    resolved_config.rewrite.include_tag_selectors = opts.include_tag_selectors;
 
     // Override config with explicit CLI flags if provided
     if cli.trace {
@@ -333,8 +339,8 @@ fn process_migration(
         // In AI-first CLI, --json defaults to compact unless --pretty is specified
     }
 
-    let is_dry_run = mode != "write";
-    let command_name = if mode == "read_only" {
+    let is_dry_run = opts.mode != "write";
+    let command_name = if opts.mode == "read_only" {
         "scan"
     } else {
         "convert"
@@ -343,7 +349,7 @@ fn process_migration(
     let mut report = css2tw_core::report::Report {
         version: env!("CARGO_PKG_VERSION").to_string(),
         command: command_name.to_string(),
-        mode: mode.to_string(),
+        mode: opts.mode.to_string(),
         summary: css2tw_core::report::Summary {
             files_scanned: 0,
             css_files_scanned: 0,
@@ -364,10 +370,10 @@ fn process_migration(
     };
 
     let mut other_files = Vec::new();
-    let is_stdin = cli.stdin || path == "-";
+    let is_stdin = cli.stdin || opts.path == "-";
 
     if !is_stdin {
-        if let Ok(files) = css2tw_core::source::Scanner::scan_directory(path) {
+        if let Ok(files) = css2tw_core::source::Scanner::scan_directory(opts.path) {
             other_files = files
                 .into_iter()
                 .filter(|p| p.extension().and_then(|s| s.to_str()) != Some("css"))
@@ -377,7 +383,7 @@ fn process_migration(
 
     // CSS files are now ONLY taken from explicit CLI flags
     let mut css_files = Vec::new();
-    for extra_css in extra_css_files {
+    for extra_css in opts.extra_css_files {
         css_files.push(std::path::PathBuf::from(extra_css));
     }
 
@@ -385,7 +391,7 @@ fn process_migration(
     report.summary.css_files_scanned = css_files.len();
     report.summary.source_files_scanned = other_files.len();
 
-    if css_files.is_empty() && inline_css.is_none() {
+    if css_files.is_empty() && opts.inline_css.is_none() {
         report.warnings.push("No CSS files or inline CSS provided. Conversion will rely only on default Tailwind mappings (if any).".to_string());
     }
 
@@ -397,7 +403,7 @@ fn process_migration(
     }
 
     // Add inline CSS from CLI
-    if let Some(inline) = inline_css {
+    if let Some(inline) = opts.inline_css {
         css_contents.push(inline.clone());
     }
 
@@ -443,7 +449,7 @@ fn process_migration(
                 file: source_file.path.clone(),
                 status: if is_stdin {
                     "streamed".to_string()
-                } else if mode == "read_only" {
+                } else if opts.mode == "read_only" {
                     "found".to_string()
                 } else if is_dry_run {
                     "planned".to_string()
@@ -504,7 +510,7 @@ fn process_migration(
             }
 
             if has_actual_replacements {
-                if cli.include_patched || mode == "write" || cli.diff == "unified" {
+                if cli.include_patched || opts.mode == "write" || cli.diff == "unified" {
                     let actual_replacements: Vec<_> = change_file
                         .patches
                         .iter()
@@ -539,7 +545,7 @@ fn process_migration(
                         }
                         change_file.diff = Some(diff_str);
                     }
-                    if mode == "write" && !is_stdin {
+                    if opts.mode == "write" && !is_stdin {
                         if let Err(e) = std::fs::write(&source_file.path, patched) {
                             report
                                 .errors
@@ -569,7 +575,7 @@ fn process_migration(
         }
     }
 
-    if summary_only {
+    if opts.summary_only {
         report.changes = vec![];
         report.unconverted = vec![];
     }
@@ -585,9 +591,9 @@ fn process_migration(
     } else if cli.json {
         print_report(&report, cli)?;
     } else {
-        match mode {
+        match opts.mode {
             "read_only" => {
-                println!("{} analyzed in {}", "Scan".bold().blue(), path.bold());
+                println!("{} analyzed in {}", "Scan".bold().blue(), opts.path.bold());
                 println!(
                     "Found {} convertible classes across {} source files.",
                     report.summary.replacements_planned.to_string().green(),
@@ -595,7 +601,7 @@ fn process_migration(
                 );
             }
             _ => {
-                let status_msg = if mode == "write" {
+                let status_msg = if opts.mode == "write" {
                     "completed".green()
                 } else {
                     "planned (dry-run)".yellow()
@@ -604,7 +610,7 @@ fn process_migration(
                     "{} {} for path: {}",
                     "Migration".bold(),
                     status_msg,
-                    path.bold()
+                    opts.path.bold()
                 );
                 println!(
                     "Scanned {} source files. Found {} replacements. Modified {} files.",

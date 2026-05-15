@@ -76,16 +76,15 @@ pub(crate) fn ensure_leading_zero(value: &str) -> String {
     let mut chars = value.chars().peekable();
 
     while let Some(c) = chars.next() {
-        if c == '.' {
-            if result.is_empty()
+        if c == '.'
+            && (result.is_empty()
                 || result.ends_with('_')
                 || result.ends_with(' ')
-                || result.ends_with('-')
-            {
-                if let Some(&next) = chars.peek() {
-                    if next.is_ascii_digit() {
-                        result.push('0');
-                    }
+                || result.ends_with('-'))
+        {
+            if let Some(&next) = chars.peek() {
+                if next.is_ascii_digit() {
+                    result.push('0');
                 }
             }
         }
@@ -109,8 +108,8 @@ fn escape_arbitrary_value(value: &str) -> String {
 /// Formats a spacing property with proper negative value support.
 /// e.g., ("ml", "-3.75") -> "-ml-3.75"
 fn format_spacing(prop: &str, value: &str) -> String {
-    if value.starts_with('-') {
-        format!("-{}-{}", prop, &value[1..])
+    if let Some(stripped) = value.strip_prefix('-') {
+        format!("-{}-{}", prop, stripped)
     } else {
         format!("{}-{}", prop, value)
     }
@@ -186,13 +185,10 @@ pub fn map_property(
             } else {
                 let suffix = if important { "!" } else { "" };
                 return Some(format!(
-                    "{}[{}]",
+                    "{}[{}{}]",
                     prefix,
-                    format!(
-                        "{}{}",
-                        escape_arbitrary_value(resolved_str.replace(": ", ":").as_str()),
-                        suffix
-                    )
+                    escape_arbitrary_value(resolved_str.replace(": ", ":").as_str()),
+                    suffix
                 ));
             }
         }
@@ -438,7 +434,7 @@ pub fn map_property(
             let mut dest = String::new();
             let mut printer = Printer::new(&mut dest, PrinterOptions::default());
             if v.to_css(&mut printer).is_ok() {
-                Some(format!("{}", dest))
+                Some(dest.to_string())
             } else {
                 None
             }

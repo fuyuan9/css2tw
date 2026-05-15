@@ -243,7 +243,7 @@ impl FragmentParser {
                     let is_valid = protected_content[tag_end_in_protected..]
                         .chars()
                         .next()
-                        .map_or(false, |c| c.is_whitespace() || c == '>' || c == '/');
+                        .is_some_and(|c| c.is_whitespace() || c == '>' || c == '/');
 
                     if is_valid {
                         // Map back to original source
