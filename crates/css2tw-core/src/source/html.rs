@@ -69,6 +69,43 @@ impl HtmlParser {
         // Track current position in source to handle multiple elements with same classes
         let mut current_search_pos = 0;
 
+        // Detect dynamic bindings first using regex to report them
+        let dynamic_re = Regex::new(
+            r#"(?i)(v-bind:class|:class|\[class\]|\[ngClass\])\s*=\s*(?:"([^"]*)"|'([^']*)')"#,
+        )
+        .unwrap();
+        for cap in dynamic_re.captures_iter(&source.content) {
+            let attr_name = cap.get(1).unwrap().as_str();
+            let match_val = cap.get(2).or_else(|| cap.get(3)).unwrap();
+            let start = match_val.start();
+            let end = match_val.end();
+
+            replacements.push(Replacement {
+                span: Span { start, end },
+                before: match_val.as_str().to_string(),
+                after: "".to_string(),
+                confidence: crate::report::ConfidenceReport {
+                    score: 0.0,
+                    reasons: vec![],
+                },
+                reasons: vec![format!("Dynamic binding detected: {}", attr_name)],
+                trace: vec![format!("Regex match: {}", attr_name)],
+                raw_css: None,
+                suggestion: Some("Manually migrate dynamic bindings to Tailwind.".to_string()),
+                failure_reason: Some(crate::report::FailureReason::DynamicClass),
+                diagnostics: vec![crate::report::Diagnostic {
+                    severity: crate::report::Severity::Warning,
+                    recoverable: false,
+                    manual_action_required: true,
+                    reason: "DynamicClass".to_string(),
+                    message: format!(
+                        "Dynamic attribute {} detected. Auto-conversion skipped for safety.",
+                        attr_name
+                    ),
+                }],
+            });
+        }
+
         // Iterate through all elements in the document, including the root element (html)
         let root = html.root_element();
         let mut elements = vec![root];

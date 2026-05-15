@@ -169,35 +169,75 @@ impl<'a, 'i> JsxPlanVisitor<'i, 'a> {
     fn detect_dynamic_patterns(&mut self, expr_container: &JSXExpressionContainer<'a>) {
         match &expr_container.expression {
             JSXExpression::CallExpression(call) => {
-                if let Expression::Identifier(ident) = &call.callee {
-                    let name = ident.name.as_str();
-                    if name == "clsx" || name == "classNames" || name == "cva" {
+                let name = match &call.callee {
+                    Expression::Identifier(ident) => Some(ident.name.as_str()),
+                    expr => expr.as_member_expression().and_then(|mem| {
+                        if let MemberExpression::StaticMemberExpression(s) = mem {
+                            Some(s.property.name.as_str())
+                        } else {
+                            None
+                        }
+                    }),
+                };
+
+                if let Some(name) = name {
+                    if name == "clsx" || name == "classNames" || name == "cva" || name == "cn" {
                         self.add_dynamic_replacement(
                             call.span(),
                             format!("Dynamic class library detected: {}", name),
                             crate::report::FailureReason::DynamicClass,
                         );
+                        return;
                     }
                 }
+
+                self.add_dynamic_replacement(
+                    call.span(),
+                    "Dynamic function call in className".to_string(),
+                    crate::report::FailureReason::RuntimeClassGeneration,
+                );
             }
             JSXExpression::TemplateLiteral(lit) => {
-                self.add_dynamic_replacement(
-                    lit.span(),
-                    "Dynamic template literal detected in className".to_string(),
-                    crate::report::FailureReason::DynamicTemplateLiteral,
-                );
+                if !lit.expressions.is_empty() {
+                    self.add_dynamic_replacement(
+                        lit.span(),
+                        "Dynamic template literal detected in className".to_string(),
+                        crate::report::FailureReason::DynamicTemplateLiteral,
+                    );
+                }
             }
             JSXExpression::ConditionalExpression(cond) => {
                 self.add_dynamic_replacement(
                     cond.span(),
-                    "Conditional JSX className detected".to_string(),
-                    crate::report::FailureReason::DynamicClass,
+                    "Conditional class expression detected (ternary)".to_string(),
+                    crate::report::FailureReason::ConditionalClassExpression,
                 );
             }
             JSXExpression::ArrayExpression(arr) => {
                 self.add_dynamic_replacement(
                     arr.span(),
-                    "Array join pattern detected in className".to_string(),
+                    "Array composition detected in className".to_string(),
+                    crate::report::FailureReason::UnsupportedClassComposition,
+                );
+            }
+            JSXExpression::ObjectExpression(obj) => {
+                self.add_dynamic_replacement(
+                    obj.span(),
+                    "Object-based class toggle detected".to_string(),
+                    crate::report::FailureReason::RuntimeClassGeneration,
+                );
+            }
+            JSXExpression::LogicalExpression(log) => {
+                self.add_dynamic_replacement(
+                    log.span(),
+                    "Logical expression detected in className (&& / ||)".to_string(),
+                    crate::report::FailureReason::ConditionalClassExpression,
+                );
+            }
+            JSXExpression::Identifier(ident) => {
+                self.add_dynamic_replacement(
+                    ident.span(),
+                    format!("Variable reference detected in className: {}", ident.name),
                     crate::report::FailureReason::DynamicClass,
                 );
             }

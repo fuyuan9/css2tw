@@ -25,6 +25,10 @@ pub enum Reason {
     // Task 2 additions
     UnsupportedVariant,
     DynamicTemplateLiteral,
+    ConditionalClassExpression,
+    UnsupportedClassComposition,
+    RuntimeClassGeneration,
+    AmbiguousVariantComposition,
     RequiresSemanticToken,
     RequiresTailwindConfigExtension,
     AmbiguousResponsiveRule,

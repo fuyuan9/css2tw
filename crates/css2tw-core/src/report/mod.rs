@@ -185,23 +185,32 @@ pub struct RangeReport {
 /// Categories of conversion failure.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, Clone, Copy, PartialEq, Eq)]
 pub enum FailureReason {
-    /// The CSS selector is too complex to match reliably (e.g., complex pseudo-selectors).
+    /// The class name appears to be dynamic or constructed at runtime.
+    DynamicClass,
+    /// A template literal with expressions was detected.
+    DynamicTemplateLiteral,
+    /// A conditional expression (ternary) was detected in className.
+    ConditionalClassExpression,
+    /// Unsupported composition of classes (e.g. array join).
+    UnsupportedClassComposition,
+    /// Classes generated at runtime (e.g. computed keys).
+    RuntimeClassGeneration,
+    /// Ambiguous variant composition that cannot be safely determined.
+    AmbiguousVariantComposition,
+    /// The CSS selector is too complex to match reliably.
     ComplexSelector,
-    /// The CSS property is not supported by Tailwind or the current mapper.
+    /// The CSS property is not supported.
     UnsupportedProperty,
     /// Conflicting styles make it impossible to determine the final state.
     AmbiguousCascade,
     /// Conversion requires a theme token that is not defined.
     RequiresThemeToken,
-    /// The class name appears to be dynamic or constructed at runtime.
-    DynamicClass,
     /// Converting the property might break CSS specificity expectations.
     UnsafeSpecificity,
     /// No mapping was found for this selector or property.
     NoMappingFound,
     /// Task 2 additions
     UnsupportedVariant,
-    DynamicTemplateLiteral,
     RequiresSemanticToken,
     RequiresTailwindConfigExtension,
     AmbiguousResponsiveRule,
@@ -212,15 +221,19 @@ pub enum FailureReason {
 impl std::fmt::Display for FailureReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
+            FailureReason::DynamicClass => "DynamicClass",
+            FailureReason::DynamicTemplateLiteral => "DynamicTemplateLiteral",
+            FailureReason::ConditionalClassExpression => "ConditionalClassExpression",
+            FailureReason::UnsupportedClassComposition => "UnsupportedClassComposition",
+            FailureReason::RuntimeClassGeneration => "RuntimeClassGeneration",
+            FailureReason::AmbiguousVariantComposition => "AmbiguousVariantComposition",
             FailureReason::ComplexSelector => "ComplexSelector",
             FailureReason::UnsupportedProperty => "UnsupportedProperty",
             FailureReason::AmbiguousCascade => "AmbiguousCascade",
             FailureReason::RequiresThemeToken => "RequiresThemeToken",
-            FailureReason::DynamicClass => "DynamicClass",
             FailureReason::UnsafeSpecificity => "UnsafeSpecificity",
             FailureReason::NoMappingFound => "NoMappingFound",
             FailureReason::UnsupportedVariant => "UnsupportedVariant",
-            FailureReason::DynamicTemplateLiteral => "DynamicTemplateLiteral",
             FailureReason::RequiresSemanticToken => "RequiresSemanticToken",
             FailureReason::RequiresTailwindConfigExtension => "RequiresTailwindConfigExtension",
             FailureReason::AmbiguousResponsiveRule => "AmbiguousResponsiveRule",
@@ -259,14 +272,24 @@ pub struct Unconverted {
 /// Results of a benchmark run.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 pub struct BenchmarkResult {
-    pub total_files: usize,
-    pub total_time_ms: u128,
-    pub avg_time_per_file_ms: f64,
-    pub total_classes_found: usize,
-    pub total_classes_converted: usize,
-    pub conversion_rate: f64,
+    /// Name of the framework or project being benchmarked.
+    pub framework: String,
+    /// Total number of files processed.
+    pub files_total: usize,
+    /// Number of classes that were safely converted.
+    pub safe_converted: usize,
+    /// Number of unsafe patterns detected (e.g. dynamic classes).
+    pub unsafe_detected: usize,
+    /// Number of items requiring manual review.
+    pub manual_review_required: usize,
+    /// Estimated false positive count (usually 0 for deterministic tool).
+    pub false_positive_estimate: usize,
+    /// Distribution of confidence scores.
+    pub confidence_distribution: std::collections::HashMap<String, usize>,
+    /// Statistical counts of different failure reasons.
     pub failure_distribution: std::collections::HashMap<String, usize>,
-    pub diagnostics_count: usize,
+    /// Total execution time in milliseconds.
+    pub total_time_ms: u128,
 }
 
 #[cfg(test)]

@@ -352,10 +352,11 @@ fn main() -> anyhow::Result<()> {
                 css2tw_core::source::Scanner::scan_directory(path).unwrap_or_default()
             };
 
-            let mut total_classes = 0;
-            let mut converted_classes = 0;
+            let mut safe_converted = 0;
+            let mut unsafe_detected = 0;
+            let mut manual_review_required = 0;
+            let mut confidence_distribution = std::collections::HashMap::new();
             let mut failure_distribution = std::collections::HashMap::new();
-            let mut diagnostics_count = 0;
 
             let source_files = css2tw_core::source::Scanner::read_files_parallel(&paths);
             let mut css_contents = Vec::new();
@@ -376,38 +377,51 @@ fn main() -> anyhow::Result<()> {
                     continue;
                 }
                 if let Ok(reps) = converter.plan_file(sf, &css_contents) {
-                    total_classes += reps.len();
                     for rep in reps {
-                        if rep.failure_reason.is_none() && rep.confidence.score as f64 >= *threshold
-                        {
-                            converted_classes += 1;
+                        let score = rep.confidence.score as f64;
+
+                        // Confidence distribution
+                        let bucket = if score >= 0.95 {
+                            "0.95-1.0"
+                        } else if score >= 0.8 {
+                            "0.8-0.95"
+                        } else {
+                            "below_0.8"
+                        };
+                        *confidence_distribution
+                            .entry(bucket.to_string())
+                            .or_insert(0) += 1;
+
+                        if rep.failure_reason.is_none() && score >= 0.95 {
+                            safe_converted += 1;
                         } else if let Some(reason) = rep.failure_reason {
                             let reason_str = format!("{:?}", reason);
-                            *failure_distribution.entry(reason_str).or_insert(0) += 1;
+                            *failure_distribution.entry(reason_str.clone()).or_insert(0) += 1;
+
+                            if reason_str.contains("Dynamic") {
+                                unsafe_detected += 1;
+                            } else {
+                                manual_review_required += 1;
+                            }
+                        } else {
+                            // Lower confidence but no explicit failure reason
+                            manual_review_required += 1;
                         }
-                        diagnostics_count += rep.diagnostics.len();
                     }
                 }
             }
 
             let elapsed = start.elapsed();
             let result = css2tw_core::report::BenchmarkResult {
-                total_files: source_files.len(),
-                total_time_ms: elapsed.as_millis(),
-                avg_time_per_file_ms: if !source_files.is_empty() {
-                    elapsed.as_millis() as f64 / source_files.len() as f64
-                } else {
-                    0.0
-                },
-                total_classes_found: total_classes,
-                total_classes_converted: converted_classes,
-                conversion_rate: if total_classes > 0 {
-                    converted_classes as f64 / total_classes as f64
-                } else {
-                    0.0
-                },
+                framework: path.clone(),
+                files_total: source_files.len(),
+                safe_converted,
+                unsafe_detected,
+                manual_review_required,
+                false_positive_estimate: 0,
+                confidence_distribution,
                 failure_distribution,
-                diagnostics_count,
+                total_time_ms: elapsed.as_millis(),
             };
 
             if cli.json {
@@ -418,13 +432,19 @@ fn main() -> anyhow::Result<()> {
                 }
             } else {
                 println!("\n{}", "Benchmark Results".bold().underline());
-                println!("Total Files:        {}", result.total_files);
+                println!("Framework:          {}", result.framework);
+                println!("Total Files:        {}", result.files_total);
                 println!("Total Time:         {}ms", result.total_time_ms);
-                println!("Avg Time/File:      {:.2}ms", result.avg_time_per_file_ms);
-                println!("Classes Found:      {}", result.total_classes_found);
-                println!("Classes Converted:  {}", result.total_classes_converted);
-                println!("Conversion Rate:    {:.2}%", result.conversion_rate * 100.0);
-                println!("Diagnostics issued: {}", result.diagnostics_count);
+                println!("Safe Converted:     {}", result.safe_converted);
+                println!("Unsafe Detected:    {}", result.unsafe_detected);
+                println!("Manual Review:      {}", result.manual_review_required);
+
+                println!("\n{}", "Confidence Distribution:".bold());
+                let mut buckets: Vec<_> = result.confidence_distribution.iter().collect();
+                buckets.sort_by_key(|&(b, _)| b);
+                for (bucket, count) in buckets {
+                    println!("  - {:<10}: {}", bucket, count);
+                }
 
                 if !result.failure_distribution.is_empty() {
                     println!("\n{}", "Failure Distribution:".bold());
