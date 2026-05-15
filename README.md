@@ -274,6 +274,8 @@ cargo xtask bench-bulma-v0       # Bulma 0.9
 cargo xtask bench-bulma-v1       # Bulma 1.0 (Latest)
 cargo xtask bench-foundation    # Foundation 6.9
 cargo xtask bench-skeleton      # Skeleton 2.0
+cargo xtask bench-uikit         # UIkit 3.21
+cargo xtask bench-semantic      # Semantic UI 2.9
 ```
 
 #### Latest Benchmark Results
